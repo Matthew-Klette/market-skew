@@ -1,9 +1,9 @@
-"""Picking both lists with the quality-score gates, from what is already saved. Used by the scan and by `skew picks`.
+"""Picking the Picks list with the quality-score gates, from what is already saved. Used by the scan and by `skew picks`.
 The gate reads the stored Quality score rows with Claude's saved deductions applied; a company Claude has not checked yet
 counts at its raw score and is labelled so."""
 import pandas as pd
 
-from . import breaking, closest, gate, picks, store, swing
+from . import breaking, closest, gate, store, swing
 
 
 def gate_for(conn, date: str) -> dict[str, dict]:
@@ -13,12 +13,10 @@ def gate_for(conn, date: str) -> dict[str, dict]:
 
 
 def choose_all(body: dict, scored: pd.DataFrame, entries: dict, excluded, earnings: dict | None = None) -> dict:
-    """{"picks", "swing", "swing_storm"} for a report body, both lists through the same gate table.
-    `earnings` is earnings.cached(): His way skips names reporting within 7 days, Steady picks get a note."""
+    """{"swing", "swing_storm", "swing_near"} for a report body. report["swing"] is the Picks list (the key predates the
+    single method and is kept so saved reports still load). `earnings` is earnings.cached(): names reporting within 7 days are skipped."""
     flow = {s["name"]: s["flow_bps"] for s in body["sectors"]}
-    chosen = picks.as_dicts(picks.choose(scored, flow, excluded, entries, earnings, body["date"]))
     trades = swing.as_dicts(swing.choose(scored, flow, body["indexes"], body["date"], excluded, entries, earnings))
-    return {"picks": chosen, "swing": trades, "swing_storm": swing.is_stormy(body["indexes"]),
+    return {"swing": trades, "swing_storm": swing.is_stormy(body["indexes"]),
             # display only, never money or paper records: filled only while the real list is empty
-            "picks_near": [] if chosen else closest.steady(scored, entries, excluded),
-            "swing_near": [] if trades else closest.his_way(scored, entries, excluded, earnings, body["date"])}
+            "swing_near": [] if trades else closest.nearest(scored, entries, excluded, earnings, body["date"])}

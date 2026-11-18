@@ -1,11 +1,10 @@
-"""the quality-score gates. The quality score says whether a company is attractive; the skew scan says when. Pure: no files, no network.
+"""The quality-score gate. The quality score says whether a company is attractive; the skew scan says when. Pure: no files, no network.
 
-  His way (swing)   adjusted score >= 60 and depth not Thin, then the timing rules in swing.py
-  My way (Steady)   adjusted score >= 50, companies only (funds are exempt)
+  Picks   adjusted score >= 60 and depth not Thin, then the timing rules in swing.py
 The adjusted score is the raw score minus Claude's saved deductions (breaking.apply). A company Claude has not argued
 against yet uses its raw score and says so ("not yet checked by Claude"); the next app open has the answer.
 """
-HIS_WAY_MIN, STEADY_MIN = 60, 50  # 70/60 left both lists empty with Claude's deductions (2026-11-18)
+HIS_WAY_MIN = 60  # 70 left the list empty with Claude's deductions (2026-11-18)
 
 
 def line(row: dict) -> str:
@@ -36,9 +35,6 @@ def table(rows: list[dict]) -> dict[str, dict]:
                           "thin": bool(r.get("thin")), "line": line(r), "why": top_reason(r)} for r in rows}
 
 
-def passes_swing(entry: dict | None) -> bool:
+def passes(entry: dict | None) -> bool:
     return bool(entry) and entry["score"] >= HIS_WAY_MIN and not entry["thin"]
 
-
-def passes_steady(symbol: str, entry: dict | None, funds=()) -> bool:
-    return symbol in funds or (bool(entry) and entry["score"] >= STEADY_MIN)

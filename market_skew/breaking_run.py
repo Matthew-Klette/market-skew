@@ -6,13 +6,13 @@ BOARD_TOP = 20
 
 
 def on_screen(report: dict, rows: list[dict], owned: list[dict] | None = None, skip: set[str] | None = None) -> list[str]:
-    """Steady picks, swing trades, US holdings that are companies and the Board's top WATCH names (by raw score), minus the
-    tickers you can't buy. Order: picks, swing, holdings, board; no repeats."""
+    """Picks, US holdings that are companies and the Board's top WATCH names (by raw score), minus the
+    tickers you can't buy. Order: picks, holdings, board; no repeats."""
     skip = skip if skip is not None else holdings.excluded()
     owned = holdings.load() if owned is None else owned
     scored = {r["symbol"] for r in rows}
     board = [r["symbol"] for r in sorted(rows, key=lambda r: r["rank"]) if r["label"] == "WATCH"][:BOARD_TOP]
-    wanted = ([p["symbol"] for p in report.get("picks") or []] + [t["symbol"] for t in report.get("swing") or []]
+    wanted = ([t["symbol"] for t in report.get("swing") or []]
               + [h["symbol"] for h in owned if h["account"] == "usd" and h["symbol"] not in funds.FUNDS] + board)
     return [s for s in dict.fromkeys(wanted) if s in scored and s not in skip]
 

@@ -99,8 +99,8 @@ def forecast_many(symbols: list[str], closes: pd.DataFrame, runner=run_wrapper, 
 
 
 def screen_symbols(body: dict) -> list[str]:
-    """The names on the Picks page: the index funds, the Steady picks, His way swing trades and US holdings, in that order, no repeats."""
+    """The names on the Picks page: the index funds, the picks and US holdings, in that order, no repeats."""
     from . import holdings
-    names = list(FUNDS) + [p["symbol"] for p in body.get("picks") or []] + [t["symbol"] for t in body.get("swing") or []]
+    names = list(FUNDS) + [t["symbol"] for t in body.get("swing") or []]
     names += [h["symbol"] for h in holdings.load() if h["account"] == "usd"]
     return list(dict.fromkeys(names))

@@ -23,16 +23,6 @@ class ChatError(Exception):
     pass
 
 
-def _lens_lines(report: dict) -> list[str]:
-    rec = report.get("recommendation")
-    if not rec:
-        return []
-    names = {"mine": "My way (Steady picks)", "his": "His way (swing trades)"}
-    return [f"Recommended lens this month: {names[rec['lens']]}. {rec['reason']}",
-            "My way = steady, calm big companies. His way = a swing-trading creator's method, as trades with an entry, stop and target. "
-            "The page shows the user's own choice (Recommended, My way or His way) at the top; the USD plan follows it."]
-
-
 def _sentinel_lines(report: dict) -> list[str]:
     """Each on-screen company's adjusted Quality score and what breaks the call (from report["sentinel_brief"], built at render)."""
     return [f"- {x['symbol']}: Quality score {x['score']}" + (f" (was {x['raw']} before Claude's deductions)" if x["raw"] != x["score"] else "")
@@ -45,19 +35,18 @@ def brief(view: str, report: dict, history=None) -> str:
     lines += ["Today's read:"] + [f"- {x}" for x in report["read"]]
     lines += ["Tiles:"] + [f"- {t['label']}: {t['value'] if t['kind'] == 'text' else pct(t['value'])} ({t['note']})" for t in report["kpis"]]
     if view == "picks":
-        lines.append("Steady picks (long-term, low volatility; timing from the options gaps):")
-        lines += [f"- {p['symbol']} {p['name']} ({p['sector']}): {p['timing_label']}; IV {pct(p['iv'], False, 0)}; 1M {pct(p['ret_1m'])}; "
-                  + " ".join(p["reasons"]) for p in report.get("picks", [])]
+        lines.append(f"Picks (one method: a quality company at a good moment; each needs Quality score {gate.HIS_WAY_MIN}+ after Claude's counter-argument and enough filings, "
+                     "a Contrarian Bid from the options scan, and no earnings within 7 days; each has a buy price, a stop, a target and a give-it-until date):")
+        lines += [f"- {t['symbol']} {t['name']} ({t['sector']}): buy ${t['entry']:,.2f}, stop ${t['stop']:,.2f}, target ${t['target']:,.2f}, until {t['until']}; "
+                  + " ".join(t["reasons"]) for t in report.get("swing") or []] or ["- none today"]
         lines.append("User's own stocks (warning lights):")
         lines += [f"- {h['symbol']}: {h['label']} - {h['why']}" for h in report.get("holdings", [])]
-        lines.append("Paper record (Steady picks, after fees, vs VOO same period): " + "; ".join(
-            f"{x['symbol']} since {x['date']} {pct(x['ret'])} vs VOO {pct(x['voo_ret'])}" for x in report.get("paper", [])))
-        lines.append(f"His way (swing trades; each needs Quality score {gate.HIS_WAY_MIN}+ after deductions and enough filings, then the timing rules): "
-                     + (", ".join(t["symbol"] for t in report.get("swing") or []) or "none today"))
-        lines.append(f"Quality scores of the on-screen companies (Steady picks need {gate.STEADY_MIN}+, His way {gate.HIS_WAY_MIN}+):")
+        lines.append("Paper record of the picks (after fees, vs VOO same period): " + "; ".join(
+            f"{x['symbol']} since {x['date']} {x['status']} {pct(x['ret'])} vs VOO {pct(x['voo_ret'])}" for x in report.get("swing_record", [])))
+        lines.append("Quality scores of the on-screen companies:")
         lines += _sentinel_lines(report)
-        lines += _lens_lines(report)
-        lines.append("The user is a beginner building a long-term, low-volatility portfolio; the page suggests ~80% in a broad index fund.")
+        lines.append("Your plan this month is the recommendation built from it all: the funds by their signals (each of QQQ, SCHD and VOO at least 15%), "
+                     "and 30% of the USD money to the top two Picks (back to the funds when there are none).")
     if view in ("overview", "how"):
         lines.append("Themes (name, 1M vs SPY, 1W vs SPY, today, trend, flow bps, breadth, leaders):")
         lines += [f"- {t['name']}: {pct(t['rel_1m'])}, {pct(t['rel_1w'])}, {pct(t['today'])}, {t['trend']}, {t['flow_bps']:+.1f}, "

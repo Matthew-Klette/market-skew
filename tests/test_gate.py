@@ -1,6 +1,6 @@
 import pandas as pd
 
-from market_skew import breaking, gate, picks, swing
+from market_skew import breaking, gate, swing
 
 CALM = {"SPY": {"ret_1m": 0.01}, "VIX": {"ret_1d": 0.0}}
 
@@ -44,16 +44,6 @@ def test_swing_without_a_gate_keeps_the_old_rules():
 
 def test_no_candidate_passing_gives_an_empty_list():
     assert swing.choose(_scored(), {}, CALM, "2026-11-18", set(), gate={}) == []
-
-
-def test_steady_needs_steady_min_companies_only_and_funds_are_exempt():
-    scored = _scored().assign(atm=0.15)
-    bar = gate.STEADY_MIN
-    g = gate.table([row("HI", bar), row("EDGE", bar - 1), row("THIN", bar + 1, thin=True)])
-    got = picks.choose(scored, {}, set(), gate=g)
-    symbols = {p.symbol for p in got}
-    assert symbols == {"HI", "THIN", "VOO"}  # depth is not a Steady rule; VOO has no Quality score but is a fund
-    assert next(p for p in got if p.symbol == "HI").reasons[0].startswith(f"Quality score {bar}")
 
 
 def test_breaking_prompt_does_not_deduct_for_missing_numbers_and_version_was_bumped():

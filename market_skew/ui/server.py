@@ -12,7 +12,7 @@ import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from .. import atomic, breaking, funds, fx, holdings, jse, prediction, recommend_run, scan, store
+from .. import atomic, breaking, funds, fx, holdings, jse, prediction, scan, store
 from ..backtest import summary
 from ..picks import holdings_check, without
 from . import money_ctx, money_view, plan_view, research_view, routes, views
@@ -87,26 +87,6 @@ def save_amounts(month: str, values: dict) -> dict:
     return merged
 
 
-LENSES = routes.LENSES
-
-
-def lens_choice(month: str, saved: dict | None = None) -> str:
-    """What you picked for this month: "auto" (follow Recommended), "mine" (Steady picks) or "his" (swing trades)."""
-    value = ((saved if saved is not None else prefs()).get("lens") or {}).get(month)
-    return value if value in LENSES else "auto"
-
-
-def lens_for(month: str, saved: dict | None = None, recommended: str = "mine") -> str:
-    """The lens the USD plan follows: your pick, or the recommendation when you left it on auto."""
-    choice = lens_choice(month, saved)
-    return recommended if choice == "auto" else choice
-
-
-def save_lens(month: str, choice: str) -> str:
-    update_prefs(lambda saved: {"lens": {**(saved.get("lens") or {}), month: choice}})
-    return choice
-
-
 def toggle_watch(symbol: str) -> bool:
     with WATCH_LOCK:
         return _toggle(symbol)
@@ -160,13 +140,10 @@ def _picks(report: dict) -> str:
     rate = fx.cached()
     quotes = jse.cached() or report.get("jse") or {}
     mine = holdings.rows(holdings.load(), report.get("holdings") or [], quotes)
-    rec = report["recommendation"]
-    choice = lens_choice(month_key())
     buys = {h["symbol"]: holdings.buy_price(h) for h in holdings.load() if holdings.buy_price(h)}
     shown = {**report, **money_ctx.plan_lean(report, prefs()), "jse": quotes, "holdings": mine, "last_buys": buys, "rate_date": (rate or {}).get("date"),
              "forecaster_missing": not prediction.available() and not report.get("predictions")}
-    return views.picks_page(shown, amounts_for(month_key()), (rate or {}).get("rate"),
-                            lens_for(month_key(), recommended=rec["lens"]), choice, rec, amounts_set(month_key()))
+    return views.picks_page(shown, amounts_for(month_key()), (rate or {}).get("rate"), amounts_set(month_key()))
 
 
 def sentinel_chip(row: dict) -> dict:
@@ -175,32 +152,26 @@ def sentinel_chip(row: dict) -> dict:
 
 
 def sentinel_brief(report: dict, scores: list[dict]) -> list[dict]:
-    """The adjusted score and what_breaks of each Steady pick and swing trade, for the chat brief."""
-    shown = {x["symbol"] for x in (report.get("picks") or []) + (report.get("swing") or [])}
+    """The adjusted score and what_breaks of each pick, for the chat brief."""
+    shown = {x["symbol"] for x in (report.get("swing") or [])}
     return [{**sentinel_chip(r), "symbol": r["symbol"], "what_breaks": (r.get("breaking") or {}).get("what_breaks")}
             for r in scores if r["symbol"] in shown]
 
 
 def on_screen(report: dict) -> dict:
-    """What the Picks page and the /plan table both use: picks and swing trades without the names you can't buy,
-    plus the Steady record and the recommendation. Reads saved data only."""
+    """What the Picks page and the /plan table both use: the picks without the names you can't buy. Reads saved data only."""
     skip = holdings.excluded()
-    report = {**report, "picks": without(report.get("picks") or [], skip)}
-    if report.get("swing") is not None:
-        report = {**report, "swing": without(report["swing"], skip)}
-    with store.connect() as conn:
-        return recommend_run.enrich(conn, report)
+    return {**report, "swing": without(report["swing"], skip)} if report.get("swing") is not None else report
 
 
 def plan_rows(amount: float) -> str:
-    """USD table rows for an amount, from the latest report (same lens and exclusions as the page)."""
+    """USD table rows for an amount, from the latest report (same exclusions as the page)."""
     with store.connect() as conn:
         report = store.report(conn) or {}
     report = on_screen(report) if report.get("date") else report
-    rec = report.get("recommendation") or {"lens": "mine"}
     rate = (fx.cached() or {}).get("rate")
     report = {**report, **money_ctx.plan_lean(report, prefs())}
-    return plan_view.usd_body(plan_view.usd_lines(report, amount, lens_for(month_key(), recommended=rec["lens"]), rate), rate)
+    return plan_view.usd_body(plan_view.usd_lines(report, amount, rate), rate)
 
 
 def render(path: str, query: dict) -> tuple[int, str]:

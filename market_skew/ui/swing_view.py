@@ -1,7 +1,7 @@
-"""The "His way" section of the Picks page: swing trades with entry, stop, target and a give-up date, then the paper record."""
+"""The Picks section: each pick with entry, stop, target and a give-up date, buy ladder, earnings line, quality score and prediction; then the paper record vs VOO."""
 from .. import costs, gate
 from . import levels_view, near_view, prediction_view, research_view
-from .fmt import e, money, pct, tone
+from .fmt import e, money, pct, tone, ticker_link
 
 STATUS = {"open": "Open", "stopped": "Hit the stop", "target": "Hit the target", "time": "Time ran out"}
 FEES = (costs.RATES["usd_buy"] + costs.RATES["usd_sell"]) * 100
@@ -19,7 +19,7 @@ def earnings_note(text: str) -> str:
 def _card(t: dict, r: dict, preds: dict, sentinel: dict) -> str:
     why = "".join(f"<li>{e(x)}</li>" for x in t["reasons"])
     return f"""<article class="pick swing" data-swing="{e(t["symbol"])}">
-<div class="pick-head"><div><span class="pick-symbol">{e(t["symbol"])}</span> <span class="muted">{e(t["name"])}</span>
+<div class="pick-head"><div><span class="pick-symbol">{ticker_link(t["symbol"])}</span> <span class="muted">{e(t["name"])}</span>
 <div class="leaders">{e(t["sector"])} · {pct(t["ret_1m"])} this month</div>{research_view.chip(sentinel.get(t["symbol"]), t["symbol"])}</div></div>
 <div class="levels">{_level("Buy at", t["entry"], 0.0, "flat")}{_level("Sell if below", t["stop"], t["stop_pct"], "down")}
 {_level("Take profit at", t["target"], t["target_pct"], "up")}<div class="level"><span class="muted">Give it until</span><b>{e(t["until"])}</b><span class="muted">28 days</span></div></div>
@@ -57,19 +57,18 @@ def section(r: dict) -> str:
         cards = '<p class="prose">Not worked out for this report yet. It fills in at the next scan.</p>'
     else:
         cards = (f'<p class="prose">No company is both attractive (Quality score {gate.HIS_WAY_MIN} or more after Claude\'s deductions, with enough filings) and '
-                 'at a good moment (a Contrarian Bid) today. So there is nothing here, and His way\'s share of new money goes to the funds. '
+                 'at a good moment (a Contrarian Bid) today. So there is nothing here, and the stock slice of your plan goes to the funds. '
                  'That is a fine answer.</p>') + near_view.block(r.get("swing_near"))
     storm = ('<p class="hint"><b>Stormy market:</b> the S&amp;P 500 is down and VIX is jumping, so only the top two are shown.</p>'
              if r.get("swing_storm") else "")
-    return f"""<section class="block" data-his-way><div class="block-head"><h2>His way</h2>
-<span class="hint">A swing-trading creator's public method: buy a stock that dipped while options traders lean towards a bounce, with the exit planned first. It tells you where to look, not what will happen.</span></div>
+    return f"""<section class="block" data-his-way><div class="block-head"><h2>Picks</h2>
+<span class="hint">A quality company at a good moment, with a buy price, a stop and a target.</span></div>
 {storm}{cards}
-<details class="explain"><summary>How these are chosen</summary><p class="prose"><b>Attractive first, then timing.</b> The quality score
-tells you whether a company is attractive, not when to get in; the options scan is the when. So a company must score 60 or more on Quality score
-after Claude\'s deductions, with enough filings that it is not marked Thin (a score Claude has not checked yet counts at its raw score and says so).
-Then the timing rules: down against the market this month while options bets lean bullish (a Contrarian Bid),
-share price $5+, $50M+ traded a day, options pricing in a move of 100% a year or less, not down more than 35% this month.
-Up today and money moving into its sector rank higher; one per sector, at most 5. A company reporting earnings within 7 days is not offered ("Wait until after results"); a missing date never blocks, it just says so. <b>Sell if below</b> is the bigger of 4% or 1.2 times
-the move options expect over two weeks. <b>Take profit</b> is twice that distance above the entry. If neither is hit, give it
-28 days.</p></details>
+<details class="explain"><summary>How these are chosen</summary><p class="prose"><b>Attractive first, then timing.</b> The Quality score
+must be {gate.HIS_WAY_MIN} or more after Claude argues against it, with enough filings that it is not marked Thin (a score Claude has not checked yet counts at its raw score and says so).
+Then the options scan decides when: a Contrarian Bid (down against the market this month while options bets lean bullish), share price $5+, $50M+ traded a day,
+options pricing in a move of 100% a year or less, not down more than 35% this month. A company reporting within 7 days is skipped ("Wait until after results"); a missing date never blocks.
+Up today and money moving into its sector rank higher; one per sector, at most 5. <b>Sell if below</b> is the bigger of 4% or 1.2 times
+the move options expect over two weeks. <b>Take profit at</b> is twice that distance above the entry. If neither is hit, give it
+28 days. Buy in pieces at the price levels shown, not all at once.</p></details>
 {_record(r.get("swing_record") or [])}</section>"""

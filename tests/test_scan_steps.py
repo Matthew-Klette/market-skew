@@ -25,24 +25,10 @@ def test_predict_fetches_two_years_for_the_on_screen_names_only(monkeypatch):
         asked.update(symbols=list(symbols), period=period)
         return long_frame(symbols), None
     short = long_frame(["QQQ"], 80)  # the scan's 4-month frame is too short for a forecast
-    body = {"picks": [{"symbol": "KO"}], "swing": [{"symbol": "SW"}]}
+    body = {"swing": [{"symbol": "KO"}, {"symbol": "SW"}]}
     out = scan._predict(body, short, "2026-11-18", fetch=fetch, runner=lambda path: payload())
     assert asked["period"] == "2y" and {"QQQ", "SCHD", "VOO", "VOOG", "KO", "SW"} <= set(asked["symbols"])
     assert "KO" in out and "QQQ" in out
-
-
-def test_paper_step_fetches_closes_for_picks_outside_the_universe_and_freezes(tmp_path):
-    scan_close = long_frame(["VOO", "AAA"], 150)
-    gone = long_frame(["GONE"], 150)
-    with store.connect(tmp_path / "t.db") as conn:
-        conn.execute("INSERT INTO paper (symbol, date, entry, spy_entry) VALUES ('GONE', '2025-06-02', 100.0, 1.0)")
-        body = {}
-        asked = []
-        scan._paper(conn, body, scan_close, ["AAA"], "2025-07-30",
-                    fetch=lambda s, period: asked.append(list(s)) or (gone, None))
-        row = store.paper_rows(conn)[0]
-    assert asked == [["GONE"]] and body["paper_closes"]["GONE"] == float(gone["GONE"].iloc[-1])
-    assert row["exit_close"] is not None and row["voo_exit"] is not None
 
 
 def test_swing_update_backfills_missing_voo_entry(tmp_path):
@@ -66,10 +52,10 @@ def test_breaking_step_runs_for_on_screen_names_and_never_fails_the_scan(tmp_pat
         monkeypatch.setattr(breaking_run, "run", lambda c, rows, names, **k: seen.append(names) or {"asked": 1, "cached": 0, "failed": 0})
         monkeypatch.setattr(breaking_run.holdings, "excluded", lambda: set())
         monkeypatch.setattr(breaking_run.holdings, "load", lambda: [])
-        scan._breaking(conn, {"picks": [{"symbol": "ACME"}], "swing": []}, "2026-11-18")
+        scan._breaking(conn, {"swing": [{"symbol": "ACME"}]}, "2026-11-18")
         assert seen[0][0] == "ACME" and len(seen[0]) == len(set(seen[0]))  # picks first, then the Board's WATCH names
         monkeypatch.setattr(breaking_run, "run", lambda *a, **k: 1 / 0)
-        scan._breaking(conn, {"picks": [], "swing": []}, "2026-11-18")  # must not raise
+        scan._breaking(conn, {"swing": []}, "2026-11-18")  # must not raise
     assert "counter-argument step skipped" in capsys.readouterr().out
 
 
@@ -77,7 +63,7 @@ def test_levels_survive_a_failure_reading_the_holdings(monkeypatch):
     monkeypatch.setattr(scan, "write_status", lambda **kw: None)
     from market_skew import holdings, prediction
     monkeypatch.setattr(holdings, "load", lambda: 1 / 0)
-    body = {"picks": [{"symbol": "KO"}], "swing": []}
+    body = {"swing": [{"symbol": "KO"}]}
     out = scan._predict(body, long_frame(["QQQ"], 80), "2026-11-18", fetch=lambda s, period: (long_frame(s), None), runner=lambda path: payload())
     assert "KO" in body["levels"] and "KO" in out
 
@@ -86,7 +72,7 @@ def test_levels_survive_a_failed_forecast(monkeypatch):
     monkeypatch.setattr(scan, "write_status", lambda **kw: None)
     from market_skew import prediction
     monkeypatch.setattr(prediction, "forecast_many", lambda *a, **k: 1 / 0)
-    body = {"picks": [{"symbol": "KO"}], "swing": []}
+    body = {"swing": [{"symbol": "KO"}]}
     assert scan._predict(body, long_frame(["QQQ"], 80), "2026-11-18", fetch=lambda s, period: (long_frame(s), None)) == {}
     assert "KO" in body["levels"]
 
@@ -98,13 +84,13 @@ def test_earnings_are_fetched_before_the_final_selection(monkeypatch):
 
     def select(conn, body, scored, date):
         order.append("select")
-        body["picks"] = [{"symbol": "KO"}]
+        body["swing"] = [{"symbol": "KO"}]
     monkeypatch.setattr(scan, "_select", select)
     monkeypatch.setattr(scan, "_breaking", lambda *a: order.append("breaking"))
     monkeypatch.setattr(scan.store, "sentinel", lambda c, d: (d, []))
-    monkeypatch.setattr(breaking_run, "on_screen", lambda body, rows: [p["symbol"] for p in body["picks"]])
+    monkeypatch.setattr(breaking_run, "on_screen", lambda body, rows: [p["symbol"] for p in body["swing"]])
     monkeypatch.setattr(earnings, "refresh", lambda names, **k: order.append("earn:" + ",".join(names)) or {})
-    monkeypatch.setattr(scan.prediction, "screen_symbols", lambda body: [p["symbol"] for p in body["picks"]])
-    scan._screened(None, {"picks": [], "swing": []}, None, "2026-11-18")
+    monkeypatch.setattr(scan.prediction, "screen_symbols", lambda body: [p["symbol"] for p in body["swing"]])
+    scan._screened(None, {"swing": []}, None, "2026-11-18")
     assert order[0] == "select" and "select" in order[order.index("earn:KO") + 1:]  # re-chosen after the dates arrive
     assert order[-1] == "select" and order.count("earn:KO") == 1

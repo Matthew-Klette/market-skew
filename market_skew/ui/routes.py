@@ -2,11 +2,10 @@
 scan control), passed in so this file never imports it. Every handler takes the parsed JSON object and returns (status, body)."""
 import re
 
-from .. import breaking, holdings, recommend_run, settings, store
+from .. import breaking, holdings, settings, store
 from . import chat, money_ctx, plan_view
 
 LOCAL_HOSTS = ("127.0.0.1", "localhost")
-LENSES = ("auto", "mine", "his")
 DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 NOT_A_TICKER = (400, {"error": "Not a ticker."})
 NOT_A_NUMBER = (400, {"error": "Not a number."})
@@ -73,12 +72,6 @@ def _amounts(data, app):
     return 200, {"amounts": app.save_amounts(app.month_key(), values)}
 
 
-def _lens(data, app):
-    if data.get("lens") not in LENSES:
-        return 400, {"error": "Not a choice."}
-    return 200, {"lens": app.save_lens(app.month_key(), data["lens"])}
-
-
 def _plan(data, app):
     try:
         amount = max(0.0, min(float(data.get("usd", 0)), 1e9))
@@ -97,7 +90,6 @@ def _ask(data, app):
         report = store.report(conn, date) or store.report(conn)
         history = store.history(conn) if view == "backtest" else None
         if report and view == "picks":
-            report = recommend_run.enrich(conn, report)
             scores = breaking.apply(store.sentinel(conn, report["date"])[1], store.breaking(conn))
             report = {**report, "sentinel_brief": app.sentinel_brief(report, scores)}
     if not report:
@@ -109,7 +101,7 @@ def _ask(data, app):
 
 
 ROUTES = {"/accept": _accept, "/run": _run, "/watch": _watch, "/exclude": _exclude, "/theme": _theme, "/settings": _settings, "/amounts": _amounts,
-          "/lens": _lens, "/plan": _plan, "/ask": _ask}
+          "/plan": _plan, "/ask": _ask}
 
 
 def dispatch(path: str, data: dict, app) -> tuple[int, dict]:

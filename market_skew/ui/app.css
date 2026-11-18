@@ -199,13 +199,6 @@ table.split tr.total td { border-top: 1px solid var(--ink); }
 .predict-verdict { margin-top: 6px; color: var(--body); }
 .line-why { color: var(--muted); font-size: 0.82em; font-weight: 400; margin-top: 2px; max-width: 46ch; }
 
-.lens { padding: 22px 0 6px; }
-.segmented { display: inline-flex; gap: 2px; padding: 3px; border-radius: 22px; box-shadow: inset 0 0 0 1px var(--line); flex-wrap: wrap; }
-.seg { min-height: 36px; padding: 0 18px; border-radius: 18px; background: transparent; color: var(--ink); font-weight: 600; font-size: 14px; }
-.seg:hover { background: var(--hover); }
-.seg[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
-.seg:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
-.lens-note { margin-top: 12px; max-width: 74ch; color: var(--body); }
 .other-way { margin-top: 28px; }
 .other-way > summary { cursor: pointer; color: var(--muted); font-weight: 600; width: fit-content; }
 .other-way > summary:hover { color: var(--ink); }
@@ -330,3 +323,6 @@ s.was { font-size: 12px; font-weight: 400; }
 .milestones-edit td { vertical-align: middle; }
 .milestone-progress { min-width: 130px; }
 .milestone-progress .meter-track { margin: 0 0 4px; }
+.levels { display: grid; gap: 4px; margin-top: 10px; font-variant-numeric: tabular-nums; }
+.level { display: grid; grid-template-columns: 9.5em auto 1fr; gap: 10px; align-items: baseline; }
+.level b { font-weight: 700; }

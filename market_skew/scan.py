@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from . import breaking_run, earnings, fundamentals_run, funds, sentinel_run, fx, history, holdings, jse, levels_run, market, prediction, recommend_run, report, selection, steady_record, store, swing_run
+from . import breaking_run, earnings, fundamentals_run, funds, sentinel_run, fx, history, holdings, jse, levels_run, market, prediction, report, selection, store, swing_run
 from .sectors import INDEXES, SECTOR_ETFS, VOL_INDEX
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -150,13 +150,12 @@ def _earnings(body: dict) -> dict:
 
 
 def _names(body: dict) -> list[str]:
-    """The Picks page names. If the full list (which reads the holdings file) fails, the funds, picks and swing trades still count."""
+    """The Picks page names. If the full list (which reads the holdings file) fails, the funds and picks still count."""
     try:
         return prediction.screen_symbols(body)
     except Exception as error:
-        print(f"screen names fell back to funds, picks and swing trades: {error}"[:300], flush=True)
-        return list(dict.fromkeys(list(funds.FUNDS) + [p["symbol"] for p in body.get("picks") or []]
-                                  + [t["symbol"] for t in body.get("swing") or []]))
+        print(f"screen names fell back to funds and picks: {error}"[:300], flush=True)
+        return list(dict.fromkeys(list(funds.FUNDS) + [t["symbol"] for t in body.get("swing") or []]))
 
 
 def _dates(body: dict, done: set[str]) -> bool:
@@ -199,30 +198,10 @@ def _predict(body: dict, close, date: str, fetch=market.prices, runner=None) -> 
         return {}
 
 
-def _paper(conn, body: dict, close, symbols, date: str, fetch=market.prices) -> None:
-    """Steady paper record upkeep. Picks that have left the scan universe still get a close (small fetch, saved in the
-    report as paper_closes) so their rows don't silently drop; settled picks are frozen at their day-28 close."""
-    try:
-        rows = store.paper_rows(conn)
-        if not rows:
-            return
-        outside = [r["symbol"] for r in rows if r["symbol"] not in set(symbols)]
-        have = [s for s in outside if s in close and not close[s].dropna().empty]
-        lacking = [s for s in outside if s not in have]
-        extra = fetch(lacking, period="6mo")[0] if lacking else pd.DataFrame()
-        frame = close.join(extra.drop(columns=[c for c in extra if c in close]), how="outer").sort_index() if len(extra.columns) else close
-        body["paper_closes"] = {s: float(frame[s].dropna().iloc[-1]) for s in outside if s in frame and not frame[s].dropna().empty}
-        voo = frame["VOO"] if "VOO" in frame else None
-        for symbol, pick, compare in steady_record.freezes(rows, frame, voo, date):
-            store.freeze_paper(conn, symbol, pick, compare)
-    except Exception as error:
-        print(f"paper record step skipped: {error}"[:300], flush=True)
-
-
 def refresh_caches(day: str) -> dict:
-    """The only place (with the predict/funds/swing commands) that fetches the rand rate, JSE prices and VOO closes.
+    """The only place (with the predict/funds/swing commands) that fetches the rand rate and JSE prices.
     The page reads what this saves. Returns the JSE quotes."""
-    for step in (fx.refresh, lambda: recommend_run.refresh_voo(day), history.refresh):  # history: at most weekly
+    for step in (fx.refresh, history.refresh):  # history: at most weekly
         try:
             step()
         except Exception as error:
@@ -235,7 +214,7 @@ def refresh_caches(day: str) -> dict:
 
 
 def _select(conn, body: dict, scored, date: str) -> None:
-    """Both lists, through the quality-score gates (adjusted scores where Claude has checked, raw scores marked as such where not).
+    """The Picks list, through the quality-score gates (adjusted scores where Claude has checked, raw scores marked as such where not).
     A failure keeps whatever lists the body already has."""
     try:
         body.update(selection.choose_all(body, scored, selection.gate_for(conn, date), holdings.excluded(), earnings.cached()))
@@ -244,7 +223,7 @@ def _select(conn, body: dict, scored, date: str) -> None:
 
 
 def _swing(conn, body: dict, close, date: str) -> None:
-    """His way: the final trades go into the paper table and open ones settle. A failure never fails the scan."""
+    """The final picks go into the paper table and open ones settle. A failure never fails the scan."""
     try:
         body["swing_record"] = swing_run.update(conn, date, body["swing"], close)
     except Exception as error:
@@ -370,16 +349,14 @@ def run(limit: int = UNIVERSE, log=print) -> dict:
             body["intraday"] = False  # prices always end at a finished session now
             body["covers"] = covers.isoformat()
             body["funds"] = funds.compute(readings, stats, store.recent_reports(conn, date))
-            body["jse"] = refresh_caches(date)  # rand rate, rand prices for the TFSA fund and VOO closes, saved for the page
+            body["jse"] = refresh_caches(date)  # rand rate, rand prices for the TFSA fund, saved for the page
             store.save_stocks(conn, date, scored)
-            body["picks"], body["swing"] = [], []  # nothing is on screen until the quality-score gates have run
+            body["swing"] = []  # nothing is on screen until the quality-score gates have run
             _fundamentals(conn, symbols)
             _sentinel(conn, scored, close, date)
             _screened(conn, body, scored, date)
-            store.add_paper(conn, date, body["picks"], dict(zip(stats["symbol"], stats["close"])).get("SPY"))
-            _paper(conn, body, close, symbols, date)
             _swing(conn, body, close, date)
-            body["predictions"] = _predict(body, close, date)  # after selection, so His way names get a range too
+            body["predictions"] = _predict(body, close, date)  # after selection, so the picks get a range too
             body["earnings"] = _earnings(body)
             store.save_report(conn, date, body["built_at"], body)
         write_status(state="done", step=f"Report for {date} ready", done=len(symbols), total=len(symbols), date=date)

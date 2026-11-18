@@ -40,7 +40,7 @@ touched.
 
 Screenshots go here:
 
-- Picks: your monthly plan, Steady picks, swing trades, the stocks you own
+- Picks: one method (a quality company at a good moment, scored, argued against by Claude, then timed from the options scan) with a buy price, a stop, a target and a time limit for each pick; your monthly plan built from it; the stocks you own
 - Money: your split across funds, a bad-year check, and whether your goal is on track
 - Market: today's read, where money is flowing by theme and sector, a weekly heatmap
 - Research: the Quality score board and one card per company, with a fair-value range
@@ -99,7 +99,7 @@ Your files: `config/holdings.json` (what you own; edit it on the Money tab), `co
 ## Credits
 
 Some features follow public ideas from other people, described generically: a swing-trading creator's public posts
-inspired the "His way" swing trades, and a personal-finance creator's rules of thumb inspired the budget checks on the
+inspired the Picks method (buy price, stop, target and time limit), and a personal-finance creator's rules of thumb inspired the budget checks on the
 Money tab. The portfolio maths builds on JoelLewis/finance_skills (MIT); see THIRD_PARTY_NOTICES.md for that and for the
 libraries, data sources and the Google TimesFM weights. Matt recommends the Google predictor; it is optional.
 

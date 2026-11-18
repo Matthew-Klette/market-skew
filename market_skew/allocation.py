@@ -2,8 +2,8 @@
 
 Rules (SPEC story 3):
   - QQQ, SCHD and VOO always get at least 15% each of the amount.
-  - Single stocks together get 30% of the amount when there are candidates (top 2: "mine" = ready Steady picks,
-    "his" = swing trades). With no candidates that money goes back to the funds.
+  - Single stocks together get 30% of the amount when there are Picks (the top 2). With no Picks that money goes back to
+    the funds.
   - Whatever is left above the floors is tilted between the three funds by signal weight: add 2, wait 1, hold 0.5.
     A fund with no reading counts as wait.
   - VOOG never gets new money.
@@ -26,13 +26,6 @@ def _largest_remainder(shares: list[float], total: int) -> list[int]:
     return floors
 
 
-def _stocks(candidates: list[dict], lens: str) -> list[dict]:
-    if lens == "his":
-        return list(candidates)[:PER_MONTH]
-    ready = [p for p in candidates if p.get("timing") == "add"] or [p for p in candidates if p.get("timing") == "wait"]
-    return ready[:PER_MONTH]
-
-
 def _fund_reason(signal: dict | None) -> str:
     kind = (signal or {}).get("timing")
     if kind == "add":
@@ -44,12 +37,9 @@ def _fund_reason(signal: dict | None) -> str:
     return "Floor amount: you asked to keep adding to this. No options reading yet."
 
 
-def _stock_reason(p: dict, lens: str) -> str:
-    if lens == "his":
-        return (f"His way: buy near ${p['entry']:,.2f}, stop ${p['stop']:,.2f}, target ${p['target']:,.2f}, "
-                f"give it until {p['until']}.")
-    why = (p.get("reasons") or [""])[-1]
-    return f"{p.get('timing_label', 'Steady pick')}: {why}".strip()
+def _stock_reason(p: dict) -> str:
+    return (f"Pick: buy near ${p['entry']:,.2f}, stop ${p['stop']:,.2f}, target ${p['target']:,.2f}, "
+            f"give it until {p['until']}.")
 
 
 def _line(symbol: str, name: str, kind: str, rand: int, reason: str, rate: float | None) -> dict:
@@ -58,11 +48,11 @@ def _line(symbol: str, name: str, kind: str, rand: int, reason: str, rate: float
             "fee": cost["fee"], "invested": cost["invested"], "reason": reason}
 
 
-def allocate(amount: float, fund_signals: dict, candidates: list[dict], lens: str = "mine",
+def allocate(amount: float, fund_signals: dict, candidates: list[dict],
              rate: float | None = None, tilt: dict | None = None) -> list[dict]:
     """`tilt` (optional) multiplies a fund's signal weight, e.g. {"QQQ": 0.5, "VOO": 1.5} when drift says so (rebalance.tilt)."""
     total = max(int(round(float(amount))), 0)
-    stocks = _stocks(candidates, lens)
+    stocks = list(candidates)[:PER_MONTH]
     stock_share = STOCK_CAP if stocks else 0.0
     weights = [WEIGHTS.get((fund_signals.get(s) or {}).get("timing"), WEIGHTS["wait"]) * (tilt or {}).get(s, 1.0) for s in FUND_ORDER]
     tilt_pool = 1.0 - stock_share - FLOOR * len(FUND_ORDER)
@@ -71,6 +61,6 @@ def allocate(amount: float, fund_signals: dict, candidates: list[dict], lens: st
     rands = _largest_remainder(fund_shares + stock_shares, total)
     lines = [_line(s, FUND_NAMES[s], "fund", r, _fund_reason(fund_signals.get(s)), rate)
              for s, r in zip(FUND_ORDER, rands)]
-    lines += [_line(p["symbol"], p.get("name") or p["symbol"], "stock", r, _stock_reason(p, lens), rate)
+    lines += [_line(p["symbol"], p.get("name") or p["symbol"], "stock", r, _stock_reason(p), rate)
               for p, r in zip(stocks, rands[len(FUND_ORDER):])]
     return lines

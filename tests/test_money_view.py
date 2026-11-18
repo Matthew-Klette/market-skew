@@ -51,12 +51,12 @@ def test_plan_lean_only_when_drift_is_large(cfg):
 
 def test_plan_shows_the_line_and_tilted_amounts(cfg):
     report = {**REPORT, "funds": {k: {"timing": "wait", "label": "w", "why": "x"} for k in ("QQQ", "SCHD", "VOO")},
-              "picks": [], "drift_note": "Your growth funds are 12pp over target: this month's plan leans to VOO and SCHD.",
+              "swing": [], "drift_note": "Your growth funds are 12pp over target: this month's plan leans to VOO and SCHD.",
               "drift_tilt": {"QQQ": 0.5, "VOO": 1.5, "SCHD": 1.5}}
     html = plan_view.plan(AMOUNTS, report, 18.0, {})
     assert "12pp over target" in html
-    flat = plan_view.usd_lines({**report, "drift_tilt": None}, 5000, "mine", 18.0)
-    leaning = plan_view.usd_lines(report, 5000, "mine", 18.0)
+    flat = plan_view.usd_lines({**report, "drift_tilt": None}, 5000, 18.0)
+    leaning = plan_view.usd_lines(report, 5000, 18.0)
     assert leaning[0]["rand"] < flat[0]["rand"]
 
 

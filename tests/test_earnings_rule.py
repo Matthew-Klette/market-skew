@@ -1,7 +1,6 @@
 import pandas as pd
 
 from market_skew import closest, selection, swing
-from market_skew.picks import choose as choose_steady
 from market_skew.ui import swing_view
 
 TODAY = "2026-11-18"
@@ -26,13 +25,13 @@ def test_missing_or_fund_data_never_blocks():
     assert swing.wait_note({"kind": "fund"}, TODAY) is None
 
 
-def test_steady_note_counts_days_or_says_unknown():
-    assert swing.steady_note(rep("2026-11-21"), TODAY) == "Reports in 3 days"
-    assert swing.steady_note(rep("2026-11-19"), TODAY) == "Reports in 1 day"
-    assert swing.steady_note(rep("2026-11-18"), TODAY) == "Reports today"
-    assert swing.steady_note(rep("2027-01-20"), TODAY) == "Reports in 63 days"
-    assert swing.steady_note(None, TODAY) == "earnings date unknown"
-    assert swing.steady_note({"kind": "fund"}, TODAY) == ""
+def test_earnings_line_counts_days_or_says_unknown():
+    assert swing.earnings_line(rep("2026-11-21"), TODAY) == "Reports in 3 days"
+    assert swing.earnings_line(rep("2026-11-19"), TODAY) == "Reports in 1 day"
+    assert swing.earnings_line(rep("2026-11-18"), TODAY) == "Reports today"
+    assert swing.earnings_line(rep("2027-01-20"), TODAY) == "Reports in 63 days"
+    assert swing.earnings_line(None, TODAY) == "earnings date unknown"
+    assert swing.earnings_line({"kind": "fund"}, TODAY) == ""
 
 
 def _scored():
@@ -48,15 +47,9 @@ def test_swing_skips_names_reporting_this_week_and_labels_unknown():
     assert [t.symbol for t in swing.choose(_scored(), {}, CALM, TODAY, set())] == ["ROST", "OK"]  # no data given: no rule
 
 
-def test_steady_keeps_the_pick_with_a_note():
-    got = choose_steady(_scored().assign(bucket="Chase"), {}, earnings={"ROST": rep("2026-11-19")}, today=TODAY)
-    notes = {p.symbol: p.earnings_note for p in got}
-    assert notes == {"ROST": "Reports in 1 day", "OK": "earnings date unknown"}
-
-
-def test_closest_his_way_names_the_wait_reason():
+def test_closest_nearest_names_the_wait_reason():
     entries = {s: {"score": 90, "raw": 90, "checked": True, "thin": False, "line": "", "why": None} for s in ("ROST", "OK")}
-    out = closest.his_way(_scored(), entries, earnings={"ROST": rep("2026-11-19")}, today=TODAY)
+    out = closest.nearest(_scored(), entries, earnings={"ROST": rep("2026-11-19")}, today=TODAY)
     assert [x["symbol"] for x in out] == ["ROST"] and out[0]["text"] == "Wait until after results on 19 Nov"
 
 

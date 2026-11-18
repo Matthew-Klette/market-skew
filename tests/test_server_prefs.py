@@ -6,11 +6,11 @@ from market_skew.ui import server
 
 def test_prefs_writes_are_atomic_and_do_not_lose_concurrent_updates(tmp_path, monkeypatch):
     monkeypatch.setattr(server, "PREFS", tmp_path / "prefs.json")
-    threads = [threading.Thread(target=server.save_lens, args=(f"2026-{m:02d}", "his")) for m in range(1, 13)]
+    threads = [threading.Thread(target=server.save_amounts, args=(f"2026-{m:02d}", {"usd": float(m)})) for m in range(1, 13)]
     [t.start() for t in threads]
     [t.join() for t in threads]
     saved = json.loads((tmp_path / "prefs.json").read_text())
-    assert len(saved["lens"]) == 12
+    assert len(saved["amounts"]) == 12
     assert not list(tmp_path.glob("*.tmp"))
 
 

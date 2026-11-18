@@ -30,10 +30,9 @@ def dollars(value: float, rate: float | None) -> str:
     return f"${value / rate:,.0f}" if rate else "–"
 
 
-def usd_lines(report: dict, amount: float, lens: str, rate: float | None) -> list[dict]:
-    """The research-driven split of the USD amount: fund signals, plus Steady picks (mine) or swing trades (his)."""
-    candidates = (report.get("swing") or []) if lens == "his" else (report.get("picks") or [])
-    return allocation.allocate(amount, report.get("funds") or {}, candidates, lens, rate, tilt=report.get("drift_tilt"))
+def usd_lines(report: dict, amount: float, rate: float | None) -> list[dict]:
+    """The recommendation: the USD amount split by the funds' signals, with the stock slice going to the Picks."""
+    return allocation.allocate(amount, report.get("funds") or {}, report.get("swing") or [], rate, tilt=report.get("drift_tilt"))
 
 
 def usd_body(lines: list[dict], rate: float | None) -> str:
@@ -79,14 +78,14 @@ def _cost_note(line_kind: str) -> str:
             f"then about {costs.RATES['usd_buy'] * 100:.2f}% a buy (0.25% brokerage + 0.31% clearing, plus 15% VAT).")
 
 
-def plan(amounts: dict, report: dict, rate: float | None, jse: dict, lens: str = "mine") -> str:
+def plan(amounts: dict, report: dict, rate: float | None, jse: dict) -> str:
     tfsa_amt, usd_amt = float(amounts["tfsa"]), float(amounts["usd"])
     tfsa, usd = costs.tfsa_line(tfsa_amt), costs.usd_line(usd_amt)
     quote = jse.get("SYG500") or {}
     price = quote.get("price")
     old = f", as of {quote['date']}" if price and quote.get("date") not in (None, dt.date.today().isoformat()) else ""
     price_txt = f"about R{price:,.2f} a unit{old}" if price else "price at next scan"
-    lines = usd_lines(report, usd_amt, lens, rate)
+    lines = usd_lines(report, usd_amt, rate)
     config = {"rate": rate, "tfsaFee": tfsa["fee_pct"]}
     tfsa_rows = _row("SYG500", f"Sygnia Itrix S&P 500 on the JSE, {price_txt}", 1.0, tfsa_amt, tfsa["fee_pct"], rate, False)
     when = report.get("rate_date")
@@ -98,7 +97,7 @@ def plan(amounts: dict, report: dict, rate: float | None, jse: dict, lens: str =
     else:
         rate_txt = f"At today's rate of R{rate:,.2f} to the dollar (ECB, via Frankfurter)."
     return f"""<section class="block plan" data-plan data-plan-config="{e(json.dumps(config))}">
-<div class="block-head"><h2>Your plan this month</h2><span class="hint">A starting point for a long-term, low-volatility portfolio.</span></div>
+<div class="block-head"><h2>Your plan this month</h2><span class="hint">The recommendation built from everything above: the funds by their signals, and the stock slice to your Picks.</span></div>
 <h3 class="plan-sub">TFSA <span class="muted">rand account</span></h3>
 {_input("tfsa", "TFSA this month", tfsa_amt)}
 <div class="table-wrap"><table class="data split" data-block="tfsa">{_head(False)}<tbody>{tfsa_rows}{_total(tfsa_amt, tfsa, rate, False)}</tbody></table></div>
@@ -110,6 +109,6 @@ def plan(amounts: dict, report: dict, rate: float | None, jse: dict, lens: str =
 <p class="hint">EasyEquities Thrive also charges R{costs.THRIVE_MONTHLY_FEE} a month, whatever you buy.</p>
 {f'<p class="prose drift-note"><b>{e(report["drift_note"])}</b> <a href="/money">See your split</a></p>' if report.get("drift_note") else ""}
 <p class="prose"><b>How the USD money is split:</b> QQQ, SCHD and VOO each get at least 15%. What's left above that leans towards
-the funds whose options signal says it's a good time to add. Single stocks ({"his way: swing trades" if lens == "his" else "my way: Steady picks"})
-get at most 30%, and that money goes back to the funds when nothing qualifies. VOOG gets nothing new. Put money in every month,
+the funds whose options signal says it's a good time to add. Single stocks (your Picks, top two)
+get 30%, and that money goes back to the funds when nothing qualifies. VOOG gets nothing new. Put money in every month,
 whatever the market does; that matters more than timing.</p></section>"""

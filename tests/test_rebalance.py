@@ -73,11 +73,11 @@ def test_note_and_tilt_only_above_five_points():
 
 def test_allocation_tilt_shifts_between_funds_and_keeps_floors_and_total():
     sig = {k: {"timing": "wait", "label": "w", "why": "x"} for k in ("QQQ", "SCHD", "VOO")}
-    base = {x["symbol"]: x["rand"] for x in allocation.allocate(5000, sig, [], "mine", 17.0)}
-    tilted = {x["symbol"]: x["rand"] for x in allocation.allocate(5000, sig, [], "mine", 17.0, tilt={"QQQ": 0.5, "VOO": 1.5, "SCHD": 1.5})}
+    base = {x["symbol"]: x["rand"] for x in allocation.allocate(5000, sig, [], 17.0)}
+    tilted = {x["symbol"]: x["rand"] for x in allocation.allocate(5000, sig, [], 17.0, tilt={"QQQ": 0.5, "VOO": 1.5, "SCHD": 1.5})}
     assert tilted["QQQ"] < base["QQQ"] and tilted["VOO"] > base["VOO"]
     assert sum(tilted.values()) == 5000 and min(tilted.values()) >= 750
-    assert allocation.allocate(5000, sig, [], "mine", 17.0, tilt={}) == allocation.allocate(5000, sig, [], "mine", 17.0)
+    assert allocation.allocate(5000, sig, [], 17.0, tilt={}) == allocation.allocate(5000, sig, [], 17.0)
 
 
 def test_clean_targets_validates_percent_and_defaults():

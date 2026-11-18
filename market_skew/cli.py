@@ -39,7 +39,7 @@ def cmd_ui(args) -> int:
 
 
 def cmd_picks(_args) -> int:
-    """Steady picks and His way trades for the latest report, through the quality-score gates (adjusted scores where Claude has
+    """The Picks for the latest report, through the quality-score gates (adjusted scores where Claude has
     checked, raw scores marked "not yet checked" otherwise), from stored data. No scan."""
     from . import earnings, market, selection, swing_run
     with store.connect() as conn:
@@ -65,22 +65,12 @@ def cmd_picks(_args) -> int:
                 earnings.refresh(sorted(names - asked))  # dates for the chosen names (cached a day, one a second)
                 asked |= names
                 chosen = selection.choose_all(body, day, selection.gate_for(conn, body["date"]), holdings.excluded(), earnings.cached())
-        body = {**body, **chosen}
-        store.drop_unselected(conn, body["date"], [p["symbol"] for p in body["picks"]], [t["symbol"] for t in body["swing"]])
-        spy = None
-        try:
-            close, _ = market.prices(["SPY"], period="1mo")
-            series = close["SPY"].dropna()
-            spy = float(series[series.index.date <= dt.date.fromisoformat(body["date"])].iloc[-1])
-        except Exception as error:
-            print(f"warning: no SPY close for the paper record ({error})")
-        store.add_paper(conn, body["date"], body["picks"], spy)
+        old = ("picks", "picks_near", "paper", "paper_closes", "recommendation")  # the dropped second list: left in the database, ignored here
+        body = {**{k: v for k, v in body.items() if k not in old}, **chosen}
+        store.drop_unselected(conn, body["date"], [t["symbol"] for t in body["swing"]])
         body["swing_record"] = swing_run.update(conn, body["date"], body["swing"])
         store.save_report(conn, body["date"], body["built_at"], body)
-    print("Steady picks:")
-    for p in body["picks"]:
-        print(f"  {p['symbol']:6} {p['timing_label']:18} {p['reasons'][0]}")
-    print("His way:" + ("" if body["swing"] else f" none pass (Quality score {gate.HIS_WAY_MIN}+ and not Thin, then the timing rules); the 30% slice goes to the funds"))
+    print("Picks:" + ("" if body["swing"] else f" none pass (Quality score {gate.HIS_WAY_MIN}+ and not Thin, a Contrarian Bid, not within 7 days of earnings); the 30% stock slice goes to the funds"))
     for t in body["swing"]:
         print(f"  {t['symbol']:6} entry ${t['entry']:,.2f}  stop ${t['stop']:,.2f}  target ${t['target']:,.2f}  {t['reasons'][0]}")
     return 0
@@ -296,8 +286,8 @@ def main(argv=None) -> int:
     p.add_argument("--exit-with-parent", action="store_true")
     p.set_defaults(func=cmd_ui)
     sub.add_parser("repick", help="same as picks").set_defaults(func=cmd_picks)
-    sub.add_parser("picks", help="Steady picks + His way trades through the quality-score gates for the latest report, without a scan").set_defaults(func=cmd_picks)
-    sub.add_parser("swing", help="same as picks (His way is chosen together with Steady)").set_defaults(func=cmd_picks)
+    sub.add_parser("picks", help="The Picks through the quality-score gate for the latest report, without a scan").set_defaults(func=cmd_picks)
+    sub.add_parser("swing", help="same as picks").set_defaults(func=cmd_picks)
     sub.add_parser("history", help="monthly price history for your funds (about 10 years) for the Money tab's goal and risk cards, without a scan").set_defaults(func=cmd_history)
     sub.add_parser("read", help="rebuild Today's read (with the rotation sentence) for the latest report, without a scan").set_defaults(func=cmd_read)
     sub.add_parser("predict", help="add Google's prediction to the latest report without a new scan").set_defaults(func=cmd_predict)

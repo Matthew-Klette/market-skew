@@ -1,4 +1,4 @@
-"""Glue for His way: adds today's trades to the paper table, settles open ones on daily closes, builds the record."""
+"""Glue for the Picks paper record: adds today's trades to the paper table, settles open ones on daily closes, builds the record."""
 import pandas as pd
 
 from . import market, store, swing

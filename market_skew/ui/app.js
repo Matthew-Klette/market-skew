@@ -65,16 +65,6 @@
     btn.closest(".pick").remove();
   }));
 
-  // Recommended / My way / His way: saved for this month, then the page redraws with the plan and sections to match.
-  const lensButtons = [...document.querySelectorAll("[data-lens]")];
-  lensButtons.forEach((btn) => btn.addEventListener("click", async () => {
-    if (btn.getAttribute("aria-pressed") === "true") return;
-    lensButtons.forEach((b) => { b.disabled = true; });
-    const result = await post("/lens", { lens: btn.dataset.lens }).catch(() => ({ error: true }));
-    if (result.error) { lensButtons.forEach((b) => { b.disabled = false; }); return; }
-    location.reload();
-  }));
-
   // Monthly amounts on Picks: the plan updates as you type and is remembered for this month.
   const planEl = document.querySelector("[data-plan]");
   if (planEl) {

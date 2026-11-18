@@ -1,5 +1,5 @@
-"""Closest candidates: when a list is empty, the 3 names that came nearest and what kept each out. Pure, no files.
-These are NOT picks: they are never in report["picks"] or report["swing"], so they get no money and no paper record."""
+"""Closest candidates: when the Picks list is empty, the 3 names that came nearest and what kept each out. Pure, no files.
+These are NOT picks: they are never in report["swing"] (the Picks list), so they get no money and no paper record."""
 import pandas as pd
 
 from . import gate, picks, swing
@@ -19,19 +19,6 @@ def _sentinel_miss(entry: dict | None, need: int) -> tuple[str | None, int]:
         head = f"Quality score {entry['score']} after Claude (needs {need})"
         return head + (f": {entry['why']}" if entry.get("why") else ""), short
     return f"Quality score {entry['score']}, not yet checked by Claude (needs {need})", short
-
-
-def _steady_misses(r, entry) -> list[str]:
-    out = []
-    if (r["market_cap"] or 0) < picks.MIN_MARKET_CAP or r["close"] < picks.MIN_PRICE or r["dvol_21"] < picks.MIN_DOLLAR_VOLUME:
-        out.append("size: not big or liquid enough")
-    if r["source"] != "mid":
-        out.append("options quotes too thin to read")
-    if r["atm"] > picks.MAX_ATM_IV:
-        out.append(f"calm: options price in {r['atm'] * 100:.0f}% a year (limit {picks.MAX_ATM_IV * 100:.0f}%)")
-    if r["ret_1m"] <= picks.WORST_MONTH or r["bucket"] in ("Fear", "Hedged Rally"):
-        out.append("timing: traders are bracing for trouble")
-    return out
 
 
 def _swing_misses(r, entry) -> list[str]:
@@ -62,11 +49,7 @@ def _near(scored: pd.DataFrame, entries: dict, excluded, need: int, misses, skip
     return [{"symbol": x[3], "name": x[4], "text": x[5]} for x in ranked[:SHOW]]
 
 
-def steady(scored: pd.DataFrame, entries: dict, excluded=frozenset()) -> list[dict]:
-    return _near(scored, entries, excluded, gate.STEADY_MIN, _steady_misses, skip=picks.FUNDS)
-
-
-def his_way(scored: pd.DataFrame, entries: dict, excluded=frozenset(), earnings: dict | None = None,
+def nearest(scored: pd.DataFrame, entries: dict, excluded=frozenset(), earnings: dict | None = None,
             today: str | None = None) -> list[dict]:
     def misses(r, entry) -> list[str]:
         wait = swing.wait_note((earnings or {}).get(r["symbol"]), today) if earnings and today else None

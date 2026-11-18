@@ -1,7 +1,7 @@
 """Builds the day's report (a plain dict, saved as JSON) from prices, skew readings and sectors. No network here."""
 import pandas as pd
 
-from . import holdings as skip_list, picks as steady
+from . import picks as lights
 from .narrative import todays_read
 from .sectors import INDEXES, SECTOR_ETFS, UNCLASSIFIED
 from .signals import group_table, score
@@ -51,9 +51,7 @@ def build(date: str, built_at: str, stats: pd.DataFrame, readings: dict, sector_
     sectors = group_table(scored, sector_groups, indexes["SPY"], *totals)
     theme_table = group_table(scored, themes, indexes["SPY"], *totals)
     scored = scored.assign(watch=scored["symbol"].isin(watchlist))
-    sector_flow = dict(zip(sectors["name"], sectors["flow_bps"])) if not sectors.empty else {}
-    chosen = steady.as_dicts(steady.choose(scored, sector_flow, skip_list.excluded()))
-    holdings = steady.holdings_check(scored, watchlist)
+    holdings = lights.holdings_check(scored, watchlist)
     shown = pd.concat([scored.head(TOP_STOCKS), scored[scored["watch"]]]).drop_duplicates("symbol")
     body = {
         "date": date, "built_at": built_at, "expiry": expiry,
@@ -69,6 +67,6 @@ def build(date: str, built_at: str, stats: pd.DataFrame, readings: dict, sector_
         "stocks": _records(shown, ["symbol", "name", "sector", "action", "bucket", "asym", "close", "ret_1d", "ret_1w", "ret_1m",
                                    "skew", "atm", "call_volume", "put_volume", "price_z", "bet_z", "watch", "source"]),
         "history_days": int(len(prev_skew) > 0),
-        "picks": chosen, "holdings": holdings,
+        "holdings": holdings,
     }
     return body, scored

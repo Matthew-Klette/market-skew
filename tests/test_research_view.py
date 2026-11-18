@@ -139,13 +139,9 @@ def test_stale_answer_is_ignored_when_the_numbers_changed(served):
 def test_pick_and_swing_cards_show_the_compact_sentinel_chip_linking_to_the_card():
     from market_skew.ui import swing_view, views
     chip = {"ACME": {"score": 56, "raw": 76, "label": "PASS"}}
-    pick = dict(symbol="ACME", name="Acme", sector="Staples", score=95, price=70.0, iv=0.15, ret_1m=0.01, timing="add",
-                timing_label="Good time to add", reasons=["calm"])
-    html = views.picks_page({"date": "d", "picks": [pick], "sentinel": chip, "read": ["The tape: x"]}, {"tfsa": 0, "usd": 0}, 17.5)
-    assert '<a class="sentinel-chip" href="/research/ACME"' in html and "Quality score 76 → 56" in html
     plain = research_view.chip({"score": 80, "raw": 80, "label": "WATCH"}, "ACME")
     assert "Quality score 80<" in plain and "→" not in plain and research_view.chip(None, "ACME") == ""
     trade = dict(symbol="ACME", name="Acme", sector="Staples", ret_1m=0.01, entry=10.0, stop=9.0, target=12.0, stop_pct=-0.1, target_pct=0.2,
                  until="2026-12-16", reasons=["dip"])
-    swing = swing_view.section({"swing": [trade], "sentinel": chip})
-    assert 'class="sentinel-chip" href="/research/ACME"' in swing and "Quality score 76 → 56" in swing
+    html = views.picks_page({"date": "d", "swing": [trade], "sentinel": chip, "read": ["The tape: x"]}, {"tfsa": 0, "usd": 0}, 17.5)
+    assert 'class="sentinel-chip" href="/research/ACME"' in html and "Quality score 76 → 56" in html

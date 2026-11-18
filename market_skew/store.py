@@ -33,19 +33,10 @@ def connect(path: Path = DB_PATH):
     conn = sqlite3.connect(path)
     try:
         conn.executescript(SCHEMA)
-        _migrate(conn)
         yield conn
         conn.commit()
     finally:
         conn.close()
-
-
-def _migrate(conn) -> None:
-    """Older databases: the Steady paper table gets a VOO column (filled lazily; spy_entry stays as it was)."""
-    have = {row[1] for row in conn.execute("PRAGMA table_info(paper)")}
-    for column in ("voo_entry", "exit_close", "voo_exit"):  # exit_* freeze a settled pick at its day-28 close
-        if column not in have:
-            conn.execute(f"ALTER TABLE paper ADD COLUMN {column} REAL")
 
 
 def save_stocks(conn, date: str, frame: pd.DataFrame) -> None:
@@ -90,41 +81,11 @@ def recent_reports(conn, before: str, count: int = 5) -> list[dict]:
     return [json.loads(b) for (b,) in reversed(rows)]
 
 
-def add_paper(conn, date: str, picks: list[dict], spy_price: float | None) -> None:
-    """Each pick joins the paper record once, at the price on the day it was first picked."""
-    conn.executemany("INSERT OR IGNORE INTO paper (symbol, date, entry, spy_entry) VALUES (?, ?, ?, ?)",
-                     [(p["symbol"], date, p["price"], spy_price) for p in picks])
-
-
-def drop_unselected(conn, date: str, pick_symbols: list[str], swing_symbols: list[str]) -> None:
-    """Re-picking a report's own day: paper rows first added on `date` that the new rules no longer pick are removed
-    (open swing trades only). Rows from earlier days are never touched."""
-    picks_in = ",".join("?" * len(pick_symbols))
+def drop_unselected(conn, date: str, swing_symbols: list[str]) -> None:
+    """Re-picking a report's own day: open paper trades first added on `date` that the new rules no longer pick are removed.
+    Rows from earlier days are never touched. (The old `paper` table stays in the database, unused.)"""
     swing_in = ",".join("?" * len(swing_symbols))
-    conn.execute(f"DELETE FROM paper WHERE date = ? AND symbol NOT IN ({picks_in})", (date, *pick_symbols))
     conn.execute(f"DELETE FROM swing_paper WHERE date = ? AND status = 'open' AND symbol NOT IN ({swing_in})", (date, *swing_symbols))
-
-
-def paper(conn) -> list[tuple]:
-    return conn.execute("SELECT symbol, date, entry, spy_entry FROM paper ORDER BY date, symbol").fetchall()
-
-
-PAPER_COLUMNS = ["symbol", "date", "entry", "spy_entry", "voo_entry", "exit_close", "voo_exit"]
-
-
-def paper_rows(conn) -> list[dict]:
-    rows = conn.execute(f"SELECT {','.join(PAPER_COLUMNS)} FROM paper ORDER BY date, symbol").fetchall()
-    return [dict(zip(PAPER_COLUMNS, r)) for r in rows]
-
-
-def set_paper_voo(conn, symbol: str, voo_price: float) -> None:
-    conn.execute("UPDATE paper SET voo_entry = ? WHERE symbol = ? AND voo_entry IS NULL", (voo_price, symbol))
-
-
-def freeze_paper(conn, symbol: str, exit_close: float | None, voo_exit: float | None) -> None:
-    """Keeps the day-28 closes of a settled pick; a value already frozen is never overwritten."""
-    conn.execute("UPDATE paper SET exit_close = COALESCE(exit_close, ?), voo_exit = COALESCE(voo_exit, ?) WHERE symbol = ?",
-                 (exit_close, voo_exit, symbol))
 
 
 def set_swing_voo(conn, symbol: str, date: str, voo_price: float) -> None:

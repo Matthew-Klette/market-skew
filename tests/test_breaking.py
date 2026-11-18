@@ -153,13 +153,13 @@ def test_run_skips_failures_unknown_symbols_and_keeps_going(conn):
     assert out == {"asked": 1, "cached": 0, "failed": 1} and set(store.breaking(conn)) == {"P2"} and "P1 skipped" in logged[0]
 
 
-def test_on_screen_lists_picks_swing_us_holdings_and_top_watch_without_repeats_or_excluded():
+def test_on_screen_lists_picks_us_holdings_and_top_watch_without_repeats_or_excluded():
     data = rows()
     for i, r in enumerate(data):
         r["label"] = "WATCH" if i < 25 else "OK"
         r["rank"] = i + 1
     names = [r["symbol"] for r in data]
-    report = {"picks": [{"symbol": names[30 % len(names)]}], "swing": [{"symbol": names[1]}, {"symbol": "ZZZ"}]}
+    report = {"swing": [{"symbol": names[30 % len(names)]}, {"symbol": names[1]}, {"symbol": "ZZZ"}]}
     owned = [{"symbol": names[2], "account": "usd"}, {"symbol": names[3], "account": "tfsa"}, {"symbol": "VOO", "account": "usd"}]
     out = breaking_run.on_screen(report, data, owned, skip={names[4]})
     assert out[0] == names[30 % len(names)] and names[1] in out and names[2] in out

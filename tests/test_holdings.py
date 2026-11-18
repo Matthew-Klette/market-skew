@@ -4,7 +4,6 @@ import pandas as pd
 import pytest
 
 from market_skew import holdings
-from market_skew.picks import choose
 
 
 def test_load_keeps_valid_entries_and_defaults(tmp_path):
@@ -47,13 +46,6 @@ def test_rows_cover_us_light_missing_etf_and_jse_price():
     assert out["STXNDQ"]["why"] == "JSE fund: price only" and out["STXNDQ"]["price"] == 61.5 and out["STXNDQ"]["currency"] == "ZAR"
 
 
-def test_choose_skips_excluded_symbols():
-    base = dict(bucket="Contrarian Bid", close=150.0, dvol_21=5e8, source="mid", atm=0.20, ret_1m=-0.04, market_cap=200e9, name="Co")
-    df = pd.DataFrame([dict(base, symbol="AAA", sector="Staples"), dict(base, symbol="BBB", sector="Staples", atm=0.22)])
-    assert [p.symbol for p in choose(df, {})] == ["AAA"]
-    assert [p.symbol for p in choose(df, {}, excluded={"AAA"})] == ["BBB"]
-
-
 def test_server_filter_drops_excluded_picks_live():
     from market_skew.picks import without
     picks = [{"symbol": "AAA"}, {"symbol": "BBB"}]
@@ -63,8 +55,8 @@ def test_server_filter_drops_excluded_picks_live():
 
 def test_views_holdings_table_shows_prices_and_button_escapes():
     from market_skew.ui import views
-    r = {"picks": [{"symbol": "A<B", "name": "n", "sector": "s", "price": 10.0, "ret_1m": 0.0, "timing": "add",
-                    "timing_label": "t", "reasons": ["r"]}],
+    r = {"swing": [{"symbol": "A<B", "name": "n", "sector": "s", "entry": 10.0, "stop": 9.0, "target": 12.0, "until": "2026-12-16",
+                    "stop_pct": -0.1, "target_pct": 0.2, "atm": 0.3, "ret_1m": 0.0, "reasons": ["r"]}],
          "holdings": holdings.rows([{"symbol": "STXNDQ", "account": "tfsa", "new_money": False}], [], {"STXNDQ": {"price": 61.5}})}
     html = views.picks_page(r, {"tfsa": 1.0, "usd": 1.0}, None)
     assert "R61.50" in html and "JSE fund: price only" in html

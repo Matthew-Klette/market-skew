@@ -7,7 +7,7 @@ cash_flow_rebalance (numpy removed, plain Python). Changes: sleeves instead of s
 DRIFT_NOTE_PP = 0.05
 SLEEVES = ("broad", "growth", "stock")
 SLEEVE_NAMES = {"broad": "Broad ETFs (S&P 500 and dividend)", "growth": "Growth funds (Nasdaq and growth)", "stock": "Single stocks"}
-SLEEVE_FUNDS = {"broad": "VOO, SCHD, SYG500", "growth": "QQQ, STXNDQ, VOOG", "stock": "Steady picks or swing trades"}
+SLEEVE_FUNDS = {"broad": "VOO, SCHD, SYG500", "growth": "QQQ, STXNDQ, VOOG", "stock": "your Picks"}
 KINDS = {"broad": "min", "growth": "max", "stock": "max"}  # at least / at most
 DEFAULT_TARGETS = {"broad": 0.70, "growth": 0.20, "stock": 0.10}
 FUND_SLEEVE = {"VOO": "broad", "SYG500": "broad", "SCHD": "broad", "QQQ": "growth", "STXNDQ": "growth", "VOOG": "growth"}

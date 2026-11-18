@@ -124,7 +124,7 @@ ALL_POSTS = sorted(set(routes.ROUTES) | set(routes.money_ctx.POSTS))
 
 
 def test_every_post_endpoint_is_routed():
-    assert ALL_POSTS == ["/accept", "/amounts", "/ask", "/exclude", "/goal", "/holdings", "/lens", "/milestones", "/money", "/plan", "/run",
+    assert ALL_POSTS == ["/accept", "/amounts", "/ask", "/exclude", "/goal", "/holdings", "/milestones", "/money", "/plan", "/run",
                          "/settings", "/targets", "/theme", "/watch"]
 
 

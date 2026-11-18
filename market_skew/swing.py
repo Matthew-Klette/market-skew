@@ -1,4 +1,4 @@
-"""His way: a swing-trading creator's public method. Pure rules, no network.
+"""The Picks method: a swing-trading creator's public process, described generically. Pure rules, no network.
 
 It buys Contrarian Bids (down against the market while options traders lean bullish), holds days to months, and
 writes down an entry, a stop and a target first. It tells you where to look, not what will happen.
@@ -69,8 +69,8 @@ def wait_note(result: dict | None, today: str) -> str | None:
     return f"Wait until after results on {day.day} {day:%b}"
 
 
-def steady_note(result: dict | None, today: str) -> str:
-    """Small note for a long-term pick: 'Reports in 3 days', 'earnings date unknown'; empty for funds."""
+def earnings_line(result: dict | None, today: str) -> str:
+    """Small earnings note on a pick: 'Reports in 3 days', 'earnings date unknown'; empty for funds."""
     if result and result.get("kind") == "fund":
         return ""
     days = days_to_report(result, today)
@@ -116,7 +116,7 @@ def choose(scored: pd.DataFrame, sector_flow: dict, indexes: dict, today: str, e
         & (scored["atm"] <= MAX_ATM_IV) & (scored["ret_1m"] > WORST_MONTH)
     ].copy()
     if gate is not None:
-        frame = frame[[sentinel_gate.passes_swing(gate.get(sym)) for sym in frame["symbol"]]].copy()
+        frame = frame[[sentinel_gate.passes(gate.get(sym)) for sym in frame["symbol"]]].copy()
     if earnings is not None:
         frame = frame[[wait_note(earnings.get(sym), today) is None for sym in frame["symbol"]]].copy()
     if frame.empty:
@@ -133,7 +133,7 @@ def choose(scored: pd.DataFrame, sector_flow: dict, indexes: dict, today: str, e
         stop, target, until = plan(entry, float(r["atm"]), today)
         trades.append(Trade(r["symbol"], r.get("name") or r["symbol"], r["sector"], int(r["score"]), entry, stop, target, until,
                             stop / entry - 1, target / entry - 1, float(r["atm"]), float(r["ret_1m"]), _with_score(_reasons(r, bool(r["inflow"])), gate, r["symbol"]),
-                            "" if earnings is None else steady_note(earnings.get(r["symbol"]), today)))
+                            "" if earnings is None else earnings_line(earnings.get(r["symbol"]), today)))
     return trades
 
 

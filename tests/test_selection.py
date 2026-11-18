@@ -4,7 +4,7 @@ from market_skew import breaking, gate, scan, selection, store
 from market_skew.ui import chat, research_view, swing_view
 
 DATE = "2026-11-18"
-MID = (gate.STEADY_MIN + gate.HIS_WAY_MIN) // 2 if gate.HIS_WAY_MIN - gate.STEADY_MIN > 1 else gate.STEADY_MIN  # passes Steady, not His way
+MID = gate.HIS_WAY_MIN - 5  # under the bar
 BODY = {"date": DATE, "sectors": [], "indexes": {"SPY": {"ret_1m": 0.01}, "VIX": {"ret_1d": 0.0}}}
 
 
@@ -23,8 +23,7 @@ def test_first_scan_of_a_week_uses_raw_scores_and_labels_them(tmp_path):
     with store.connect(tmp_path / "t.db") as conn:
         store.save_sentinel(conn, DATE, [sentinel_row("AAA", 82), sentinel_row("BBB", MID)])
         out = selection.choose_all(BODY, scored(), selection.gate_for(conn, DATE), set())
-    assert [t["symbol"] for t in out["swing"]] == ["AAA"]  # BBB: MID is under the His way bar
-    assert sorted(p["symbol"] for p in out["picks"]) == ["AAA", "BBB"]  # but over the Steady bar
+    assert [t["symbol"] for t in out["swing"]] == ["AAA"]  # BBB: MID is under the bar
     assert out["swing"][0]["reasons"][0].startswith("Quality score 82 (not yet checked by Claude)")
 
 
@@ -32,18 +31,18 @@ def test_claudes_deductions_take_a_name_out_once_saved(tmp_path):
     with store.connect(tmp_path / "t.db") as conn:
         rows = [sentinel_row("AAA", 82), sentinel_row("BBB", MID)]
         store.save_sentinel(conn, DATE, rows)
-        store.save_breaking(conn, "AAA", breaking.version(rows[0]), {"deductions": [], "what_breaks": "x", "total": 82 - gate.STEADY_MIN + 1})
+        store.save_breaking(conn, "AAA", breaking.version(rows[0]), {"deductions": [], "what_breaks": "x", "total": 82 - gate.HIS_WAY_MIN + 1})
         out = selection.choose_all(BODY, scored(), selection.gate_for(conn, DATE), set())
-    assert out["swing"] == [] and [p["symbol"] for p in out["picks"]] == ["BBB"]  # AAA falls one under the Steady bar after deductions: out of both lists
+    assert out["swing"] == []  # AAA falls one under the bar after deductions, BBB was already under it
 
 
 def test_drop_unselected_only_touches_the_reports_own_day(tmp_path):
     with store.connect(tmp_path / "t.db") as conn:
-        store.add_paper(conn, DATE, [{"symbol": "OLDPICK", "price": 1.0}], 1.0)
-        store.add_paper(conn, "2026-11-01", [{"symbol": "EARLY", "price": 1.0}], 1.0)
-        store.add_swing(conn, DATE, [{"symbol": "GONE", "entry": 1, "stop": 0.9, "target": 1.2, "until": "2026-12-16"}], 1.0)
-        store.drop_unselected(conn, DATE, ["KEEP"], [])
-        assert [r["symbol"] for r in store.paper_rows(conn)] == ["EARLY"] and store.swing_rows(conn) == []
+        trade = {"entry": 1, "stop": 0.9, "target": 1.2, "until": "2026-12-16"}
+        store.add_swing(conn, DATE, [{"symbol": "GONE", **trade}], 1.0)
+        store.add_swing(conn, "2026-11-01", [{"symbol": "EARLY", **trade}], 1.0)
+        store.drop_unselected(conn, DATE, ["KEEP"])
+        assert [r["symbol"] for r in store.swing_rows(conn)] == ["EARLY"]
 
 
 def test_screened_selects_again_after_claude_has_argued(tmp_path, monkeypatch):
@@ -60,7 +59,7 @@ def test_screened_selects_again_after_claude_has_argued(tmp_path, monkeypatch):
 def test_chip_says_when_claude_has_not_checked_and_chat_brief_carries_scores():
     assert "not yet checked by Claude" in research_view.chip({"score": 82, "raw": 82, "label": "WATCH", "checked": False}, "AAA")
     assert "not yet" not in research_view.chip({"score": 74, "raw": 82, "label": "OK", "checked": True}, "AAA")
-    report = {"date": DATE, "universe": 1, "with_skew": 1, "read": [], "kpis": [], "stocks": [], "picks": [], "swing": [],
+    report = {"date": DATE, "universe": 1, "with_skew": 1, "read": [], "kpis": [], "stocks": [], "swing": [],
               "sentinel_brief": [{"symbol": "AAA", "score": 74, "raw": 82, "checked": True, "what_breaks": "Sales growth stalls."},
                                  {"symbol": "BBB", "score": 65, "raw": 65, "checked": False, "what_breaks": None}]}
     text = chat.brief("picks", report)
@@ -68,6 +67,14 @@ def test_chip_says_when_claude_has_not_checked_and_chat_brief_carries_scores():
     assert "BBB: Quality score 65 (not yet checked by Claude)" in text
 
 
-def test_empty_his_way_says_so_plainly():
+def test_empty_picks_say_so_plainly():
     html = swing_view.section({"swing": []})
     assert "No company is both attractive" in html and "goes to the funds" in html
+
+
+def test_chat_brief_describes_one_method_and_the_plan():
+    trade = dict(symbol="AAA", name="Acme", sector="Tech", entry=50.0, stop=46.0, target=58.0, until="2026-12-16", reasons=["Quality score 80."])
+    report = {"date": DATE, "universe": 1, "with_skew": 1, "read": [], "kpis": [], "stocks": [], "swing": [trade], "swing_record": []}
+    text = chat.brief("picks", report)
+    assert "AAA Acme" in text and "buy $50.00, stop $46.00, target $58.00" in text and "Your plan this month" in text
+    assert "Conservative" not in text and "Adventurous" not in text and "Steady" not in text and "lens" not in text.lower()

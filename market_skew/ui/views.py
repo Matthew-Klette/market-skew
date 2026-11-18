@@ -1,6 +1,6 @@
 """Server-rendered pages. Every number on screen comes straight from the saved report; nothing is recalculated here."""
-from .. import costs, gate, prediction
-from . import levels_view, lens_view, near_view, plan_view, prediction_view, research_view, swing_view
+from .. import gate, prediction
+from . import levels_view, plan_view, prediction_view, research_view, swing_view
 from .fmt import BUCKET_CLASS, count, cp_ratio, e, money, pct, tone, ticker_link
 
 TABS = [("picks", "/", "Picks"), ("money", "/money", "Money"), ("overview", "/market", "Market"), ("research", "/research", "Research"), ("stocks", "/stocks", "Stocks"), ("backtest", "/backtest", "Track record"),
@@ -233,19 +233,17 @@ the absolute read.</p>
 bullish-leaning set-ups only: every bearish name scores 0, so use the Fear and Hedged Rally filters for those.</p>
 <h3>Where the data comes from</h3><p>Nasdaq's public stock list, Yahoo Finance prices and option chains. No account or key. Yahoo
 quotes can be stale or thin for small names; those fall out rather than being guessed.</p>
-<h3>Quality score in My way and His way</h3><p>The quality score says whether a company is attractive; the options scan says when. <b>My way</b> (Steady picks) needs a
-Quality score of @STEADY@ or more after Claude's deductions (companies only; funds are exempt), then the calm-and-big rules. <b>His way</b> needs @HIS@ or more
-and enough filings that the score is not marked Thin, then the timing rules (a Contrarian Bid and the rest). A score Claude has not checked yet counts at its
-raw score and is marked "not yet checked by Claude"; it is checked after the next scan or app open. If no company passes, that list says so
-and His way's share of new money goes to the funds.</p>
-<h3>Recommended: which way to lean</h3><p>On the Picks page, <b>Recommended</b> follows the paper records, which are
-tracked after EasyEquities fees and against VOO. It says <b>My way</b> (Steady picks) unless every one of these is true:
-the records go back at least 90 days; each side has at least 5 finished results from the last 90 days (a Steady pick
-is finished after 28 days, a swing trade when it hits its stop, its target or its time limit); the market is not nervous
-(the S&amp;P 500 down 5% or more over a month while VIX jumps 5% or more in a day, or the day's read says risk-off); and
-His way has beaten My way, on average, by at least 1 percentage point. Less than that is not worth the extra trading.
-You can always pick either way yourself; your choice is remembered for the month.</p>
-<p class="hint">For your own research. Not financial advice.</p></section>""".replace("@STEADY@", str(gate.STEADY_MIN)).replace("@HIS@", str(gate.HIS_WAY_MIN))
+<h3>The Picks method, in one flow</h3><ol>
+<li><b>Quality.</b> The quality score says whether a company is attractive: growth, free cash, debt and how much filing history there is. A Quality score of @HIS@ or more is needed, and the score must not be marked Thin (too few filings to trust it).</li>
+<li><b>Claude argues against it.</b> Claude makes the case against each company and takes points off. The score that counts is the one after that counter-argument. A score Claude has not checked yet counts at its raw score and is marked "not yet checked by Claude"; it is checked after the next scan or app open.</li>
+<li><b>Timing from the options scan.</b> Attractive says what; the scan says when. Only a Contrarian Bid qualifies: down against the market this month while options bets lean bullish. The stock must also be liquid and not wild (share price $5+, $50M+ traded a day, implied volatility 100% a year or less, not down more than 35% in a month).</li>
+<li><b>Buy levels, in pieces.</b> Each pick shows price levels where the stock has stopped and bounced before. Buy in pieces down that ladder instead of all at once.</li>
+<li><b>Stop, target and a time limit.</b> <b>Sell if below</b> is the bigger of 4% or 1.2 times the move options expect over two weeks. <b>Take profit at</b> is twice that distance above the entry. If neither is hit, give it until the date shown (28 days).</li>
+<li><b>Earnings guard.</b> A company reporting within 7 days is not offered; the card says "Wait until after results". A missing date never blocks, it just says it is unknown.</li></ol>
+<p>If no company passes, the page says so and shows the three closest candidates and what kept each out. They are not picks.</p>
+<h3>Your plan</h3><p>Your plan this month is the recommendation built from all of it. Of the USD money, QQQ, SCHD and VOO each get at least 15%, and what is left above that leans towards the funds whose options signal says it is a good time to add. Single stocks get 30%, split across the top two Picks; with no Picks, that 30% goes back to the funds. VOOG gets nothing new. The TFSA money goes to the Sygnia S&amp;P 500 fund. Nothing is bought for you.</p>
+<h3>Track record of the picks</h3><p>Each pick joins a paper record the day it is first picked and settles when it hits its stop, its target or its time limit. Results are after EasyEquities fees and shown next to VOO over the same stretch. If the picks don't beat VOO over a few months, keep it simple and stay in the index fund.</p>
+<p class="hint">For your own research. Not financial advice.</p></section>""".replace("@HIS@", str(gate.HIS_WAY_MIN))
 
 
 def _chat() -> str:
@@ -262,7 +260,6 @@ def _chat() -> str:
 </aside>"""
 
 
-FEES = (costs.RATES['fx_convert'] + costs.RATES['usd_buy']) * 100
 LIGHT_CLASS = {"add": "fresh", "wait": "crowded", "hold": "fear", "none": "crowded"}
 
 
@@ -272,24 +269,10 @@ def _holding_price(h: dict) -> str:
     return f"R{h['price']:,.2f}" if h.get("currency") == "ZAR" else f"${money(h['price'])}"
 
 
-def picks_page(r: dict, amounts: dict, rate: float | None, lens: str = "mine", choice: str = "auto", rec: dict | None = None,
-               amounts_set: bool = True) -> str:
-    picks = r.get("picks") or []
+def picks_page(r: dict, amounts: dict, rate: float | None, amounts_set: bool = True) -> str:
     preds = r.get("predictions") or {}
     buys = r.get("last_buys") or {}
-    plan = plan_view.plan(amounts, r, rate, r.get("jse") or {}, lens) if amounts_set else plan_view.first_run()
-    if picks:
-        cards = "".join(f"""<article class="pick">
-<div class="pick-head"><div><span class="pick-symbol">{ticker_link(p["symbol"])}</span> <span class="muted">{e(p["name"])}</span>
-<div class="leaders">{e(p["sector"])} · ${money(p["price"])} · {pct(p["ret_1m"])} this month</div>{research_view.chip((r.get("sentinel") or {}).get(p["symbol"]), p["symbol"])}</div>
-<span class="action {LIGHT_CLASS[p["timing"]]}">{e(p["timing_label"])}</span></div>
-<ul class="pick-why">{"".join(f"<li>{e(x)}</li>" for x in p["reasons"])}</ul>{swing_view.earnings_note(p.get("earnings_note", ""))}
-{levels_view.block(p["symbol"], r, "steady", buys.get(p["symbol"]))}
-{prediction_view.block(preds.get(p["symbol"]))}
-<button type="button" class="quiet small" data-exclude="{e(p["symbol"])}">Not on EasyEquities</button></article>""" for p in picks)
-    else:
-        cards = ('<p class="prose">No stock passes the steady rules today. That happens in nervous markets; the index fund alone is fine.</p>'
-                 + near_view.block(r.get("picks_near")))
+    plan = plan_view.plan(amounts, r, rate, r.get("jse") or {}) if amounts_set else plan_view.first_run()
     holdings = r.get("holdings") or []
     if holdings:
         mine = "".join(f"""<tr><td><b>{e(h["symbol"]) if h.get("currency") == "ZAR" else ticker_link(h["symbol"])}</b> <span class="muted">{e(h["name"])}</span></td>
@@ -297,30 +280,14 @@ def picks_page(r: dict, amounts: dict, rate: float | None, lens: str = "mine", c
         mine = f'<div class="table-wrap"><table class="data holdings"><tbody>{mine}</tbody></table></div>'
     else:
         mine = '<p class="hint">Add what you own to config/holdings.json and each one gets a warning light here.</p>'
-    paper = r.get("paper") or []
-    if paper:
-        prow = "".join(f"""<tr><td><b>{e(x["symbol"])}</b></td><td>{e(x["date"])}</td><td>${money(x["entry"])}</td><td>${money(x["now"])}</td>
-<td class="{tone(x["ret"])}">{pct(x["ret"])}</td><td class="{tone(x["voo_ret"])}">{pct(x["voo_ret"])}</td></tr>""" for x in paper)
-        paper_html = f"""<div class="table-wrap"><table class="data"><thead><tr><th>Pick</th><th>Picked on</th><th>Price then</th><th>Price now</th>
-<th>Since picked, after fees</th><th>VOO same period</th></tr></thead><tbody>{prow}</tbody></table></div>
-<p class="hint">After fees means the rand-to-dollar conversion and the US buy fee are taken off (about {FEES:.1f}%); nothing is sold, so there is no sell fee. If the picks don't beat the VOO column over a few months, skip them and keep everything in the index fund.</p>"""
-    else:
-        paper_html = '<p class="hint">Starts with today\'s picks.</p>'
     weather = e(r["read"][0].replace("The tape: ", "")) if r.get("read") else ""
-    control = lens_view.control(choice, rec) if rec else ""
-    steady = f"""<section class="block" data-my-way><div class="block-head"><h2>My way: Steady picks</h2><span class="hint">Big, calm companies the options market isn't worried about. Reviewed every time the app scans.</span></div>
-<div class="picks">{cards}</div>
-<details class="explain"><summary>How these are chosen</summary><p class="prose">A Quality score of {gate.STEADY_MIN} or more after Claude\'s deductions
-(companies only; index funds are exempt), market value over $20B, share price over $10, options pricing in small moves
-(implied volatility 30% a year or less), not falling more than 15% in a month, and nobody buying heavy insurance against it.
-Calmer names rank higher. One per sector so you're spread out. The options gaps only decide timing: <b>Good time to add</b> is a calm dip
-where traders are betting on a bounce; <b>OK, but no rush</b> means it's been popular lately.</p></details></section>"""
     note = f'<p class="hint predict-missing">{e(prediction.MISSING_NOTE)}</p>' if r.get("forecaster_missing") else ""
-    return f"""{control}{note}
-{plan}
-{lens_view.arrange(lens, steady, swing_view.section(r))}
+    picks = swing_view.section(r)
+    first, second = (picks, plan) if amounts_set else (plan, picks)
+    return f"""{note}
+{first}
+{second}
 <section class="block"><div class="block-head"><h2>Stocks you own</h2><span class="hint">Warning lights, not sell signals. Long-term holdings ride out bumps.</span></div>{mine}</section>
-<section class="block"><div class="block-head"><h2>Steady paper record</h2><span class="hint">Every pick, tracked from the day it was first picked, with no real money.</span></div>{paper_html}</section>
 <section class="block"><div class="block-head"><h2>Market today</h2></div><p class="prose">{weather}</p>
 <p class="hint">These are rules applied to public data, not advice from a person who knows your situation. Nothing here is guaranteed.
 They tell you where to look, not what will happen.</p></section>"""

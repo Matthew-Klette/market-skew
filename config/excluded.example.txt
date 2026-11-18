@@ -1,0 +1,1 @@
+# Tickers you cannot buy on EasyEquities. One per line; added by the "Not on EasyEquities" button.

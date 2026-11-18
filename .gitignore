@@ -1,0 +1,13 @@
+.venv/
+data/
+app/build/
+__pycache__/
+.pytest_cache/
+.scratch/
+config/prefs.json
+config/holdings.json
+config/watchlist.txt
+config/excluded.txt
+config/local.env
+*.tmp
+.DS_Store

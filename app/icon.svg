@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="#f7f5ef"/>
+  <rect x="100.5" y="100.5" width="823" height="823" rx="184" fill="none" stroke="#e0ddd2" stroke-width="3"/>
+  <!-- price: what already happened -->
+  <polyline points="232,612 340,580 430,640 520,560 610,600 700,470 792,430" fill="none" stroke="#16181a" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- the bets: where money is leaning next -->
+  <polyline points="232,452 340,486 430,420 520,500 610,456 700,560 792,600" fill="none" stroke="#14563f" stroke-width="34" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="2 58"/>
+  <circle cx="792" cy="430" r="30" fill="#16181a"/>
+  <circle cx="792" cy="600" r="30" fill="#14563f"/>
+</svg>

@@ -1,0 +1,21 @@
+{
+  "_note": "Hand-picked baskets, finer than sectors. Only names that make the top-2000 universe are used. Edit freely.",
+  "Gold / silver miners": ["NEM", "AEM", "GOLD", "KGC", "AU", "WPM", "FNV", "RGLD", "HL", "CDE", "PAAS", "AG", "EGO", "IAG", "BTG", "NGD", "SSRM", "OR", "HMY", "GFI"],
+  "Quantum": ["IONQ", "RGTI", "QBTS", "QUBT", "ARQQ", "QMCO"],
+  "Space / defense tech": ["RKLB", "ASTS", "LUNR", "RDW", "PL", "KTOS", "AVAV", "PLTR", "BKSY", "SPCE", "ACHR", "JOBY", "SATS", "IRDM"],
+  "Memory": ["MU", "WDC", "STX", "SNDK", "SIMO"],
+  "AI infra / datacenter": ["NVDA", "AVGO", "ANET", "VRT", "SMCI", "DELL", "CRWV", "NBIS", "CLS", "ETN", "CEG", "VST", "COHR", "ALAB", "CRDO", "FN", "LITE"],
+  "Software": ["MSFT", "ORCL", "CRM", "NOW", "ADBE", "INTU", "PANW", "CRWD", "SNOW", "DDOG", "NET", "ZS", "MDB", "WDAY", "TEAM", "HUBS", "SHOP", "APP", "PLTR", "U", "PATH", "GTLB", "OKTA", "TWLO", "DOCU", "ZM", "S", "FTNT", "CFLT", "ESTC", "BILL", "IOT"],
+  "Nuclear / uranium": ["CCJ", "UEC", "NXE", "DNN", "LEU", "SMR", "OKLO", "NNE", "BWXT", "UUUU"],
+  "Oil & gas": ["XOM", "CVX", "COP", "EOG", "OXY", "DVN", "FANG", "APA", "HAL", "SLB", "BKR", "MPC", "VLO", "PSX", "EQT", "AR", "RRC"],
+  "Defense primes": ["LMT", "NOC", "GD", "RTX", "LHX", "HII", "BA", "TXT"],
+  "Crypto miners / treasury": ["MSTR", "COIN", "MARA", "RIOT", "CLSK", "HUT", "CIFR", "IREN", "WULF", "BTDR", "CORZ", "HOOD", "GLXY"],
+  "Semi equipment": ["AMAT", "LRCX", "KLAC", "ASML", "TER", "ONTO", "ENTG", "MKSI", "FORM", "ACLS", "AMKR", "NVMI", "CAMT", "UCTT", "ICHR", "KLIC"],
+  "Biotech": ["VRTX", "REGN", "AMGN", "GILD", "BIIB", "MRNA", "ALNY", "INCY", "EXEL", "SRPT", "NBIX", "IONS", "BMRN", "UTHR", "INSM", "CRSP", "BEAM", "NTLA", "VKTX"],
+  "Health tech / GLP1": ["LLY", "NVO", "UNH", "ISRG", "HIMS", "DXCM", "PODD", "TDOC", "VKTX"],
+  "Regional banks": ["HBAN", "RF", "KEY", "CFG", "FITB", "MTB", "ZION", "CMA", "WAL", "FHN", "EWBC", "SNV", "WBS", "PNFP"],
+  "Homebuilders": ["DHI", "LEN", "PHM", "NVR", "TOL", "KBH", "MTH", "TMHC", "BLDR"],
+  "Airlines / travel": ["DAL", "UAL", "AAL", "LUV", "ALK", "JBLU", "BKNG", "EXPE", "ABNB", "MAR", "HLT", "RCL", "CCL", "NCLH"],
+  "China ADRs": ["BABA", "PDD", "JD", "BIDU", "NIO", "LI", "XPEV", "TCOM", "BILI", "TME", "YUMC", "BEKE"],
+  "Solar / clean energy": ["FSLR", "ENPH", "SEDG", "RUN", "NXT", "ARRY", "CSIQ", "PLUG", "BE", "FLNC"]
+}

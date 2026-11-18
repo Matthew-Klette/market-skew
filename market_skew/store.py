@@ -1,4 +1,4 @@
-"""SQLite on this Mac: one row per stock per day, the finished report per day, and the sector cache."""
+"""SQLite on this computer: one row per stock per day, the finished report per day, and the sector cache."""
 import json
 import sqlite3
 from contextlib import contextmanager

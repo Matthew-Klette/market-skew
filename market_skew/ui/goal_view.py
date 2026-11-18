@@ -1,5 +1,5 @@
 """Money tab: "Will I get there?" form, the 10/50/90 fan (inline SVG, colours from the page tokens) and the plain numbers."""
-from .. import goal, milestones
+from .. import goal, milestones, system
 from .fmt import e
 
 W, H, PAD_L, PAD_R, PAD_T, PAD_B = 640, 260, 62, 14, 14, 30
@@ -137,5 +137,5 @@ def block(g: dict) -> str:
         body = '<p class="prose">Type a target and how many years to see the range of where you could end up.</p>'
     mix = f'<p class="hint">{e(_mix_line(g))}</p>' if g["weights"] and not g["reason"] else ""
     return (f'<section class="block"><div class="block-head"><h2>Will I get there?</h2>'
-            f'<span class="hint">{e(NOT_A_FORECAST)} Your numbers stay on this Mac.</span></div>{form(g)}{body}{mix}</section>'
+            f'<span class="hint">{e(NOT_A_FORECAST)} Your numbers stay on this {system.DEVICE}.</span></div>{form(g)}{body}{mix}</section>'
             + milestones_block(g.get("milestones") or []))

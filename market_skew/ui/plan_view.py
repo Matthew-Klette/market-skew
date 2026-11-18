@@ -3,7 +3,7 @@ type (data-plan-config); the USD table is re-rendered by the server (POST /plan)
 import datetime as dt
 import json
 
-from .. import allocation, costs
+from .. import allocation, costs, system
 from .fmt import e
 
 DEFAULT_AMOUNTS = {"tfsa": 0.0, "usd": 0.0}   # nothing is assumed: a fresh install asks (see first_run)
@@ -14,12 +14,12 @@ def first_run() -> str:
     return """<section class="block plan first-run" data-first-run>
 <div class="block-head"><h2>Tell me how much you invest each month</h2><span class="hint">Then this page builds your plan.</span></div>
 <p class="prose">Enter the rand you put in each month. Leave a box at 0 if you don't use that account. You can change these any time; they are
-saved on this Mac only, per month. Nothing is bought for you: the plan is a suggestion for you to act on yourself.</p>
+saved on this DEVICE only, per month. Nothing is bought for you: the plan is a suggestion for you to act on yourself.</p>
 <form data-first-run-form>
 <label class="amount">TFSA each month <span class="amount-box">R <input type="number" min="0" step="100" inputmode="numeric" value="" placeholder="0" data-first-amount="tfsa" aria-label="TFSA each month in rand"></span></label>
 <label class="amount">USD account each month <span class="amount-box">R <input type="number" min="0" step="100" inputmode="numeric" value="" placeholder="0" data-first-amount="usd" aria-label="USD account each month in rand"></span></label>
 <button type="submit">Build my plan</button> <span class="hint" data-first-run-status></span>
-</form></section>"""
+</form></section>""".replace("this DEVICE", f"this {system.DEVICE}")
 
 
 def rand(value: float) -> str:

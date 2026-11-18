@@ -1,7 +1,9 @@
 import json
+import sys
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from market_skew import prediction
 
@@ -77,6 +79,7 @@ def test_forecaster_path_follows_env_var(monkeypatch, tmp_path):
     assert not prediction.available()
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="Mac install location")
 def test_defaults_point_at_the_repo_script_and_the_installer_folder(monkeypatch):
     monkeypatch.delenv("MARKET_SKEW_FORECASTER", raising=False)
     monkeypatch.delenv("MARKET_SKEW_FORECASTER_PYTHON", raising=False)

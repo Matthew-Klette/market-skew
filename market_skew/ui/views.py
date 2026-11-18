@@ -1,5 +1,5 @@
 """Server-rendered pages. Every number on screen comes straight from the saved report; nothing is recalculated here."""
-from .. import gate, prediction
+from .. import gate, prediction, system
 from . import levels_view, plan_view, prediction_view, research_view, swing_view
 from .fmt import BUCKET_CLASS, count, cp_ratio, e, money, pct, tone, ticker_link
 
@@ -208,7 +208,7 @@ def settings_block(contact: str) -> str:
     return f"""<section class="block prose"><h2>Settings</h2>
 <form data-settings><label>Email for SEC downloads <input type="email" name="sec_contact" maxlength="254" value="{e(contact)}" autocomplete="email"></label>
 <button type="submit">Save</button> <span class="hint" data-settings-status></span></form>
-<p class="hint">sec.gov requires a contact address from automated downloads of company filings. It is stored only on this Mac and sent only to sec.gov.</p></section>"""
+<p class="hint">sec.gov requires a contact address from automated downloads of company filings. It is stored only on this {system.DEVICE} and sent only to sec.gov.</p></section>"""
 
 
 def how(sec_contact: str = "") -> str:

@@ -1,6 +1,6 @@
 """The Money tab: rules of thumb with progress bars, TFSA room, then the holdings editor and drift (holdings_view).
 Every number comes from the saved inputs and cached prices; nothing is fetched here."""
-from .. import money_rules
+from .. import money_rules, system
 from . import goal_view, holdings_view, risk_view
 from .fmt import e
 
@@ -58,7 +58,7 @@ def tfsa_block(room: dict) -> str:
 def rules_block(inputs: dict, rows: list[dict], invested: float) -> str:
     fields = "".join(_field(k, inputs.get(k)) for k in ("take_home", "expenses", "rent", "emergency", "tfsa_year", "tfsa_life"))
     bars = "".join(_rule(r) for r in rows)
-    return f"""<section class="block"><div class="block-head"><h2>Money rules</h2><span class="hint">A common rule of thumb, not advice. Your numbers stay on this Mac.</span></div>
+    return f"""<section class="block"><div class="block-head"><h2>Money rules</h2><span class="hint">A common rule of thumb, not advice. Your numbers stay on this {system.DEVICE}.</span></div>
 <form class="money-form" data-money-form>{fields}<button type="submit">Save</button> <span class="hint" data-money-status></span></form>
 <div class="meters">{bars}</div>
 <p class="hint">Invested each month uses this month's TFSA and USD amounts from Picks ({rand(invested)}). Rules of thumb: invest about 20% of take-home, keep 3 months of expenses as an emergency fund, rent about 35% or less, living costs about 50%, about 5% for fun.</p></section>"""

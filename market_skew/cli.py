@@ -6,7 +6,7 @@ import datetime as dt
 import sys
 from pathlib import Path
 
-from . import gate, holdings, scan, seed, store
+from . import gate, holdings, scan, seed, store, system
 
 ROOT = Path(__file__).resolve().parent.parent
 def _python() -> str:
@@ -30,6 +30,11 @@ def cmd_status(_args) -> int:
     for line in body["read"]:
         print(" ·", line)
     return 0
+
+
+def cmd_app(_args) -> int:
+    from .winapp import run
+    return run()
 
 
 def cmd_ui(args) -> int:
@@ -281,10 +286,11 @@ def main(argv=None) -> int:
     p.add_argument("--limit", type=int, default=scan.UNIVERSE)
     p.set_defaults(func=cmd_scan)
     sub.add_parser("status", help="last report's Today's read").set_defaults(func=cmd_status)
-    p = sub.add_parser("ui", help="the dashboard on this Mac")
+    p = sub.add_parser("ui", help=f"the dashboard on this {system.DEVICE}")
     p.add_argument("--port", type=int, default=8765)
     p.add_argument("--exit-with-parent", action="store_true")
     p.set_defaults(func=cmd_ui)
+    sub.add_parser("app", help="Windows: open the dashboard in its own window (what the Start menu shortcut runs)").set_defaults(func=cmd_app)
     sub.add_parser("repick", help="same as picks").set_defaults(func=cmd_picks)
     sub.add_parser("picks", help="The Picks through the quality-score gate for the latest report, without a scan").set_defaults(func=cmd_picks)
     sub.add_parser("swing", help="same as picks").set_defaults(func=cmd_picks)

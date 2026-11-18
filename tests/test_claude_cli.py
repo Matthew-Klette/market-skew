@@ -1,4 +1,5 @@
 import os
+import sys
 import subprocess
 from pathlib import Path
 
@@ -6,6 +7,8 @@ import pytest
 
 from market_skew import breaking, claude_cli
 from market_skew.ui import chat
+
+MAC_ONLY = pytest.mark.skipif(sys.platform == "win32", reason="Mac install locations")
 
 
 def fake_claude(folder: Path) -> Path:
@@ -44,6 +47,7 @@ def test_which_searches_homebrew_usr_local_and_local_bin_even_when_path_is_bare(
     assert claude_cli.find() == str(home / "brew" / "claude")
 
 
+@MAC_ONLY
 def test_fixed_paths_are_the_last_resort_when_which_finds_nothing(home, monkeypatch):
     fake_claude(home / "fixed")
     monkeypatch.setattr(claude_cli, "FIXED_DIRS", (str(home / "fixed"),))
@@ -51,6 +55,7 @@ def test_fixed_paths_are_the_last_resort_when_which_finds_nothing(home, monkeypa
     assert claude_cli.find() == str(home / "fixed" / "claude")
 
 
+@MAC_ONLY
 def test_the_real_directories_are_the_documented_ones(home, monkeypatch):
     assert claude_cli.DEFAULT_FIXED_DIRS == ("/opt/homebrew/bin", "/usr/local/bin")
     monkeypatch.setattr(claude_cli, "FIXED_DIRS", claude_cli.DEFAULT_FIXED_DIRS)
@@ -68,6 +73,7 @@ def test_not_found_says_how_to_fix_it(home):
         breaking._claude()
 
 
+@MAC_ONLY
 def test_chat_and_breaking_pass_the_search_path_to_the_subprocess(home, monkeypatch):
     monkeypatch.setattr(claude_cli, "FIXED_DIRS", claude_cli.DEFAULT_FIXED_DIRS)
     seen = []

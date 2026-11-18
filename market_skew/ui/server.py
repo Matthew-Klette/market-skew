@@ -12,7 +12,7 @@ import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from .. import atomic, breaking, funds, fx, holdings, jse, prediction, scan, store
+from .. import atomic, breaking, funds, fx, holdings, jse, prediction, scan, store, system
 from ..backtest import summary
 from ..picks import holdings_check, without
 from . import money_ctx, money_view, plan_view, research_view, routes, views
@@ -110,11 +110,7 @@ def stop_scan() -> None:
     for child in _scan_child:
         if child.poll() is None:
             stopped = True
-            child.terminate()
-            try:
-                child.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                child.kill()
+            system.stop_process(child)
     if stopped:
         scan.LOCK.unlink(missing_ok=True)
         scan.write_status(state="stopped", step="Stopped when the app closed. It picks up again next time you open it.")
@@ -126,10 +122,10 @@ def start_scan() -> bool:
         return False
     log = (ROOT / "data" / "logs")
     log.mkdir(parents=True, exist_ok=True)
-    python = ROOT / ".venv" / "bin" / "python"
-    child = subprocess.Popen([str(python if python.exists() else sys.executable), "-B", str(ROOT / "skew"), "scan"], cwd=ROOT,
-                             stdout=open(log / "scan.log", "a"), stderr=subprocess.STDOUT,
-                             preexec_fn=lambda: os.nice(10))  # low priority so the Mac stays responsive
+    python = system.venv_python(ROOT / ".venv")
+    child = subprocess.Popen([str(python if python.exists() else sys.executable), *system.python_flags(), "-B", str(ROOT / "skew"), "scan"],
+                             cwd=ROOT, stdout=open(log / "scan.log", "a"), stderr=subprocess.STDOUT,
+                             **system.low_priority())  # low priority so the computer stays responsive
     _scan_child.append(child)
     scan.write_status(state="running", step="Starting", done=0, total=0)
     return True
@@ -292,9 +288,14 @@ def _scan_if_stale() -> None:
         start_scan()
 
 
-def serve(port: int = 8765, exit_with_parent: bool = False) -> None:
+def make_server(port: int = 8765) -> tuple[ThreadingHTTPServer, str]:
+    """The dashboard server on 127.0.0.1 (port 0 picks a free one) and its address."""
     httpd = ThreadingHTTPServer(("127.0.0.1", port), Handler)
-    url = f"http://127.0.0.1:{httpd.server_address[1]}/"
+    return httpd, f"http://127.0.0.1:{httpd.server_address[1]}/"
+
+
+def serve(port: int = 8765, exit_with_parent: bool = False) -> None:
+    httpd, url = make_server(port)
     print(url, flush=True)
     if exit_with_parent:  # running inside the app: scan on open when needed, stop with the app
         threading.Thread(target=_watch_parent, daemon=True).start()

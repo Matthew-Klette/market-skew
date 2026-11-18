@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from . import system
 from . import breaking_run, earnings, fundamentals_run, funds, sentinel_run, fx, history, holdings, jse, levels_run, market, prediction, report, selection, store, swing_run
 from .sectors import INDEXES, SECTOR_ETFS, VOL_INDEX
 
@@ -46,8 +47,7 @@ def write_status(**fields) -> None:
 
 def _lock_alive() -> bool:
     try:
-        os.kill(int(LOCK.read_text().strip() or "0"), 0)
-        return True
+        return system.pid_alive(int(LOCK.read_text().strip() or "0"))
     except (OSError, ValueError):
         return False
 
@@ -60,7 +60,7 @@ def read_status() -> dict:
     started = dt.datetime.fromisoformat(status.get("updated", "1970-01-01T00:00:00"))
     fresh = (dt.datetime.now() - started).total_seconds() < 60  # a run just launched may not hold the lock yet
     if status.get("state") == "running" and not _lock_alive() and not fresh:
-        return {**status, "state": "failed", "step": "The last run stopped before finishing (Mac asleep or closed?)."}
+        return {**status, "state": "failed", "step": f"The last run stopped before finishing ({system.DEVICE} asleep or closed?)."}
     return status
 
 
@@ -71,11 +71,13 @@ def _take_lock() -> bool:
     except FileExistsError:
         pid = LOCK.read_text().strip() or "0"
         try:
-            os.kill(int(pid), 0)
+            alive = system.pid_alive(int(pid))
+        except ValueError:
+            alive = False
+        if alive:
             return False  # a run is already going
-        except (OSError, ValueError):
-            LOCK.unlink(missing_ok=True)  # stale lock from a run that died
-            return _take_lock()
+        LOCK.unlink(missing_ok=True)  # stale lock from a run that died
+        return _take_lock()
     os.write(fd, str(os.getpid()).encode())
     os.close(fd)
     return True

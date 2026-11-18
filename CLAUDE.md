@@ -1,6 +1,8 @@
 # Market Skew: notes for Claude Code
 
-A local macOS app (Python engine in `market_skew/`, native Swift window in `app/`). Personal config and saved data are
+A local macOS app (Python engine in `market_skew/`, native Swift window in `app/`), also installable on Windows 10/11
+(`install.cmd` -> `install.ps1`, window = Edge app mode via `skew app` in `market_skew/winapp.py`; platform differences live in
+`market_skew/system.py`, and the Mac answers there must never change). Personal config and saved data are
 gitignored and stay on the user's Mac.
 
 ## When the user asks to install it
@@ -18,6 +20,9 @@ gitignored and stay on the user's Mac.
    open asks how much they invest each month.
 
 Useful flags: `--yes`, `--skip-tests`, `--app-dir DIR`, `--no-dock`, `--no-predictor`.
+
+On Windows run `.\install.cmd` instead (flags `-Yes`, `-SkipTests`, `-NoShortcuts`, `-NoPredictor`); if uv is missing it
+prints `winget install --id=astral-sh.uv -e` for the user to run. The app lands in the Start menu and on the desktop.
 
 ## Updating
 

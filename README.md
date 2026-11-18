@@ -36,6 +36,23 @@ downloads). Flags: `--yes`, `--skip-tests`, `--app-dir DIR`, `--no-dock`, `--no-
 To update: `git pull` and `./install.sh` again. Your own files (holdings, watchlist, settings, saved scans) are not
 touched.
 
+## Install on Windows
+
+You need Windows 10 or 11 (64-bit), [uv](https://docs.astral.sh/uv/) and, to download it with `git`, Git for Windows. Open
+PowerShell or Terminal and run these one at a time:
+
+    winget install --id=astral-sh.uv -e      # once; then close the window and open a new one
+    winget install --id=Git.Git -e           # once (or use the green Code button > Download ZIP and unzip it instead)
+    git clone https://github.com/Matthew-Klette/market-skew.git $HOME\market-skew
+    cd $HOME\market-skew
+    .\install.cmd
+
+`install.cmd` asks the same two questions as the Mac installer, then adds Market Skew to the Start menu and the desktop.
+It opens in its own window (Microsoft Edge in app mode with a separate profile, so it shares nothing with your browser).
+Closing the window stops the dashboard and any scan, as quitting does on a Mac. Flags: `-Yes`, `-SkipTests`,
+`-NoShortcuts`, `-NoPredictor`. To update: `git pull` and `.\install.cmd` again. To remove it: delete the folder, the two
+"Market Skew" shortcuts and `%LOCALAPPDATA%\MarketSkew`.
+
 ## What you will see
 
 Screenshots go here:

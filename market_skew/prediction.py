@@ -9,17 +9,19 @@ from pathlib import Path
 
 import pandas as pd
 
+from . import system
 from .funds import FUNDS
 
 ROOT = Path(__file__).resolve().parent.parent
 WRAPPER = ROOT / "tools" / "predictor" / "forecast.py"
-PREDICTOR_HOME = Path.home() / "Library" / "Application Support" / "MarketSkew" / "predictor"
+PREDICTOR_HOME = system.app_support() / "predictor"
 HORIZON, SEASON, ORIGINS = 21, 5, 6
 MIN_CLOSES = 120
 MAX_CLOSES = 504          # about two years
 TIMEOUT_SECONDS = 120
 MODEL = "TimesFM 2.5"
-MISSING_NOTE = "Google's prediction isn't installed on this Mac. Run scripts/install-predictor.sh from the project folder to add it (see README)."
+PREDICTOR_SCRIPT = r"scripts\install-predictor.ps1" if system.IS_WINDOWS else "scripts/install-predictor.sh"
+MISSING_NOTE = f"Google's prediction isn't installed on this {system.DEVICE}. Run {PREDICTOR_SCRIPT} from the project folder to add it (see README)."
 BEAT_RATIO = 0.9          # model error under 90% of "no change" error counts as a beat
 
 
@@ -30,7 +32,7 @@ def wrapper_path() -> Path:
 
 def env_python() -> Path:
     """The Python that runs the model: MARKET_SKEW_FORECASTER_PYTHON, else the one install-predictor.sh made."""
-    return Path(os.environ.get("MARKET_SKEW_FORECASTER_PYTHON") or PREDICTOR_HOME / "env" / "bin" / "python")
+    return Path(os.environ.get("MARKET_SKEW_FORECASTER_PYTHON") or system.venv_python(PREDICTOR_HOME / "env"))
 
 
 def available() -> bool:
@@ -41,9 +43,9 @@ def available() -> bool:
 def run_wrapper(csv_path: str) -> str:
     """The real runner: returns the wrapper's --json stdout. Raises on a non-zero exit."""
     result = subprocess.run(
-        [sys.executable or "python3", str(wrapper_path()), csv_path, "--horizon", str(HORIZON), "--season", str(SEASON),
+        [system.console_python(sys.executable or "python3"), *system.python_flags(), str(wrapper_path()), csv_path, "--horizon", str(HORIZON), "--season", str(SEASON),
          "--backtest-origins", str(ORIGINS), "--positive", "--json"],
-        capture_output=True, text=True, timeout=TIMEOUT_SECONDS, check=True)
+        capture_output=True, text=True, timeout=TIMEOUT_SECONDS, check=True, **system.hidden_window())
     return result.stdout
 
 

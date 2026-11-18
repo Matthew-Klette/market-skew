@@ -19,8 +19,13 @@ import sys
 import tempfile
 from pathlib import Path
 
-ROOT = Path(os.environ.get("MARKET_SKEW_PREDICTOR_HOME") or Path.home() / "Library" / "Application Support" / "MarketSkew" / "predictor")
-ENV_PYTHON = Path(os.environ.get("MARKET_SKEW_FORECASTER_PYTHON") or ROOT / "env" / "bin" / "python")
+WINDOWS = sys.platform == "win32"
+if WINDOWS:  # %LOCALAPPDATA%\MarketSkew\predictor, made by scripts\install-predictor.ps1
+    _DEFAULT_HOME = Path(os.environ.get("LOCALAPPDATA") or Path.home() / "AppData" / "Local") / "MarketSkew" / "predictor"
+else:
+    _DEFAULT_HOME = Path.home() / "Library" / "Application Support" / "MarketSkew" / "predictor"
+ROOT = Path(os.environ.get("MARKET_SKEW_PREDICTOR_HOME") or _DEFAULT_HOME)
+ENV_PYTHON = Path(os.environ.get("MARKET_SKEW_FORECASTER_PYTHON") or (ROOT / "env" / "Scripts" / "python.exe" if WINDOWS else ROOT / "env" / "bin" / "python"))
 WEIGHTS = ROOT / "weights" / "timesfm"
 WORKER = Path(__file__).resolve().parent / "timesfm_worker.py"
 MODEL_LABEL = "TimesFM 2.5 200M (google/timesfm-2.5-200m-pytorch @1d95242, Apache-2.0)"
@@ -99,11 +104,22 @@ def run_timesfm(contexts, horizon, positive=False):
     payload = json.dumps({"contexts": contexts, "horizon": horizon, "positive": positive}).encode()
     environment = {"HOME": str(ROOT), "PATH": "/usr/bin:/bin", "HF_HUB_OFFLINE": "1", "TRANSFORMERS_OFFLINE": "1", "HF_HUB_DISABLE_TELEMETRY": "1",
                    "OMP_NUM_THREADS": "4", "TOKENIZERS_PARALLELISM": "false"}
+    extra = {}
+    if WINDOWS:  # Python and PyTorch will not start on Windows without these
+        keep = ("SYSTEMROOT", "SYSTEMDRIVE", "WINDIR", "COMSPEC", "PATHEXT", "USERPROFILE", "APPDATA", "LOCALAPPDATA", "NUMBER_OF_PROCESSORS",
+                "PROCESSOR_ARCHITECTURE")
+        environment.update({key: os.environ[key] for key in keep if key in os.environ})
+        system_root = os.environ.get("SYSTEMROOT", r"C:\Windows")
+        environment["PATH"] = os.pathsep.join([str(Path(system_root) / "System32"), system_root])
+        environment["PYTHONUTF8"] = "1"
+        extra["creationflags"] = 0x08000000  # no console window
     args = [str(ENV_PYTHON), "-I", str(WORKER), str(WEIGHTS)]
     with tempfile.TemporaryDirectory(prefix="tfm-") as scratch:
         environment["TMPDIR"] = scratch
+        if WINDOWS:
+            environment["TEMP"] = environment["TMP"] = scratch
         try:
-            done = subprocess.run(args, input=payload, capture_output=True, env=environment, timeout=RUN_SECONDS, cwd=ROOT)
+            done = subprocess.run(args, input=payload, capture_output=True, env=environment, timeout=RUN_SECONDS, cwd=ROOT, **extra)
         except subprocess.TimeoutExpired:
             raise ForecastError("TimesFM run timed out.") from None
     if done.returncode != 0:

@@ -135,6 +135,13 @@ def _claude() -> str:
         raise BreakingError(str(error)) from None
 
 
+def failure(done) -> str:
+    """The useful part of a failed call. The CLI's sign-in expiry warning comes first on stderr and used to fill the whole message."""
+    lines = [x.strip() for x in f"{done.stderr or ''}\n{done.stdout or ''}".splitlines()]
+    useful = [x for x in lines if x and not x.startswith("Warning:")]
+    return f"exit {done.returncode}" + (f": {' | '.join(useful)[-160:]}" if useful else "")
+
+
 def ask(row: dict, run=subprocess.run) -> dict:
     """One call for one company. Raises BreakingError on a timeout, a failed call or an unreadable reply."""
     env = claude_cli.subprocess_env()  # no API key, so it can only use your Claude plan
@@ -146,7 +153,7 @@ def ask(row: dict, run=subprocess.run) -> dict:
         except subprocess.TimeoutExpired:
             raise BreakingError("timed out") from None
     if done.returncode != 0:
-        raise BreakingError((done.stderr or "claude failed").strip()[:120])
+        raise BreakingError(failure(done))
     result = parse(done.stdout or "")
     if result is None:
         raise BreakingError("reply was not usable JSON")

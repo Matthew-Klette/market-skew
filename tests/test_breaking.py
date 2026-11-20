@@ -103,6 +103,17 @@ def test_ask_turns_timeouts_failures_and_junk_into_breaking_errors(monkeypatch):
             breaking.ask(acme(), run)
 
 
+def test_failed_call_reports_the_real_error_not_the_sign_in_warning(monkeypatch):
+    monkeypatch.setattr(breaking, "_claude", lambda: "/bin/claude")
+    warning = "Warning: this sign-in ends between 2026-11-23 and 2026-11-26 (in 3 days at the earliest). Renewing it does not move those dates."
+    with pytest.raises(breaking.BreakingError, match="usage limit reached"):
+        breaking.ask(acme(), lambda *a, **k: Done("", 1, f"{warning}\nAPI Error: usage limit reached\n"))
+    with pytest.raises(breaking.BreakingError, match="exit 1: rate limited"):
+        breaking.ask(acme(), lambda *a, **k: Done("rate limited", 1, warning))
+    with pytest.raises(breaking.BreakingError, match="exit 2"):
+        breaking.ask(acme(), lambda *a, **k: Done("", 2, ""))
+
+
 def test_apply_subtracts_relabels_reranks_and_ignores_stale_answers():
     base = rows()
     top = base[0]

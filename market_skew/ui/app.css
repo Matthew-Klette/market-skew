@@ -346,3 +346,10 @@ s.was { font-size: 12px; font-weight: 400; }
 .levels { display: grid; gap: 4px; margin-top: 10px; font-variant-numeric: tabular-nums; }
 .level { display: grid; grid-template-columns: 9.5em auto 1fr; gap: 10px; align-items: baseline; }
 .level b { font-weight: 700; }
+
+/* BUY NOW: rare, loud, red */
+.buynow { border: 2px solid var(--down); background: var(--down-tint); border-radius: 12px; padding: 20px 24px; }
+.buynow-card + .buynow-card { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--down); }
+.buynow-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
+.buynow-word { color: var(--down); font-size: 30px; font-weight: 800; letter-spacing: 0.04em; }
+.buynow-action { font-weight: 700; margin: 8px 0 4px; }

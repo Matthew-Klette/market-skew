@@ -74,3 +74,19 @@ def next_add(last_buy: float | None) -> float | None:
     if not last_buy or last_buy <= 0:
         return None
     return round(last_buy * (1 - ADD_GAP), 2)
+
+
+def floor_near(closes, above: float = 0.03, below: float = 0.02, touches: int = 3) -> dict | None:
+    """The floor today's price is sitting on: one that held `touches`+ separate times in the last year and is within 3% under
+    today's price (or up to 2% through it). {level, touches, distance_pct} or None. Used by the BUY NOW check only."""
+    values = [float(v) for v in (closes.dropna() if hasattr(closes, "dropna") else closes) if v and v > 0][-260:]
+    if len(values) < MIN_CLOSES:
+        return None
+    price = values[-1]
+    near = []
+    for group in _clusters(_lows(values)):
+        level = sorted(group)[len(group) // 2]
+        gap = (price - level) / price
+        if len(group) >= touches and -below <= gap <= above:
+            near.append({"level": round(level, 2), "touches": len(group), "distance_pct": round(gap * 100, 1)})
+    return max(near, key=lambda x: (x["touches"], -abs(x["distance_pct"]))) if near else None

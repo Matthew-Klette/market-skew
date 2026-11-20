@@ -1,6 +1,6 @@
 """Server-rendered pages. Every number on screen comes straight from the saved report; nothing is recalculated here."""
 from .. import gate, prediction, system
-from . import levels_view, plain, plan_view, prediction_view, research_view, swing_view
+from . import buynow_view, levels_view, plain, plan_view, prediction_view, research_view, swing_view
 from .fmt import BUCKET_CLASS, count, cp_ratio, e, money, pct, tone, ticker_link
 
 TABS = [("picks", "/", "Picks"), ("overview", "/market", "Market"), ("research", "/research", "Research"), ("stocks", "/stocks", "Stocks"), ("backtest", "/backtest", "Track record"),
@@ -232,6 +232,10 @@ quotes can be stale or thin for small names; those fall out rather than being gu
 <li><b>Stop, target and a time limit.</b> <b>Sell if below</b> is the bigger of 4% or 1.2 times the move options expect over two weeks. <b>Take profit at</b> is twice that distance above the entry. If neither is hit, give it until the date shown (28 days).</li>
 <li><b>Earnings guard.</b> A company reporting within 7 days is not offered; the card says "Wait until after results". A missing date never blocks, it just says it is unknown.</li></ol>
 <p>If no company passes, the page says so and shows the three closest candidates and what kept each out. They are not picks.</p>
+<h3>BUY NOW (rare)</h3><p>A red <b>BUY NOW</b> appears at the top of Picks only when every strict check agrees at once. Most days there is none.</p>
+<ul><li><b>Index fund</b> (VOO, QQQ, SCHD): the S&amp;P 500 is 10%+ below its high, the fear gauge (VIX) is up 30%+ this month, the fund is 10%+ below its one-year high, options traders on the fund lean towards a bounce, and Google's prediction (if installed) does not point lower. It means: put this month's money for that fund in now, in one go.</li>
+<li><b>Stock</b>: already a Pick, Quality score 75+ after Claude's counter-argument, price under the bear case of its fair-value range, within 3% of a floor that held three or more times this year, not a stormy market, and Google's prediction (if installed) does not point lower.</li></ul>
+<p>It is still rules on public data, not advice. Drops can keep going, and a single company can fall on news no rule sees.</p>
 <h3>Your plan</h3><p>Your plan this month is the recommendation built from all of it. Of the USD money, QQQ, SCHD and VOO each get at least 15%, and what is left above that leans towards the funds whose options signal says it is a good time to add. Single stocks get 30%, split across the top two Picks; with no Picks, that 30% goes back to the funds. VOOG gets nothing new. The TFSA money goes to the Sygnia S&amp;P 500 fund. Nothing is bought for you.</p>
 <h3>Track record of the picks</h3><p>Each pick joins a paper record the day it is first picked and settles when it hits its stop, its target or its time limit. Results are after EasyEquities fees and shown next to VOO over the same stretch. If the picks don't beat VOO over a few months, keep it simple and stay in the index fund.</p>
 <p class="hint">For your own research. Not financial advice.</p></section>""".replace("@HIS@", str(gate.HIS_WAY_MIN))
@@ -278,7 +282,7 @@ def picks_page(r: dict, amounts: dict, rate: float | None, amounts_set: bool = T
     top = f'<section class="block"><div class="block-head"><h2>This month in one answer</h2></div><div class="answers one">{top}</div></section>' if top else ""
     weather = "".join(x for x in (plain.market_up(r), plain.nervous(r)) if x)
     weather = f'<div class="answers">{weather}</div><p class="hint"><a href="/market">More on the Market tab</a></p>' if weather else ""
-    return f"""{note}{top}
+    return f"""{note}{buynow_view.block(r.get("buy_now"))}{top}
 {first}
 {second}
 <section class="block"><div class="block-head"><h2>Stocks you own</h2><span class="hint">Warning lights, not sell signals. Long-term holdings ride out bumps.</span></div>{mine}</section>

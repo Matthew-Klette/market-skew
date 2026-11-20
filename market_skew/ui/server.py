@@ -12,7 +12,7 @@ import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from .. import atomic, breaking, funds, fx, holdings, jse, prediction, scan, store, system
+from .. import atomic, breaking, buynow, funds, fx, holdings, jse, prediction, scan, store, system
 from ..backtest import summary
 from ..picks import holdings_check, without
 from . import money_ctx, money_view, plan_view, research_view, routes, views
@@ -204,6 +204,7 @@ def render(path: str, query: dict) -> tuple[int, str]:
             report["holdings"] += [fund_rows[s] for s in sorted(fund_rows) if s not in {x["symbol"] for x in lights}]
             report = {**on_screen(report), "sentinel": {r["symbol"]: sentinel_chip(r) for r in scores}}
             report["sentinel_brief"] = sentinel_brief(report, scores)
+            report["buy_now"] = buynow.check(report, scores, holdings.excluded())
     status = scan.read_status()
     theme = prefs().get("theme", "system")
     if not prefs().get("accepted_terms"):  # a one-time "not financial advice" screen before anything else

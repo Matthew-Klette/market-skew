@@ -157,7 +157,10 @@ def sentinel_brief(report: dict, scores: list[dict]) -> list[dict]:
 def on_screen(report: dict) -> dict:
     """What the Picks page and the /plan table both use: the picks without the names you can't buy. Reads saved data only."""
     skip = holdings.excluded()
-    return {**report, "swing": without(report["swing"], skip)} if report.get("swing") is not None else report
+    if report.get("swing") is None:
+        return report
+    hidden = [p["symbol"] for p in report["swing"] if p["symbol"] in skip]
+    return {**report, "swing": without(report["swing"], skip), "swing_hidden": hidden}
 
 
 def plan_rows(amount: float) -> str:

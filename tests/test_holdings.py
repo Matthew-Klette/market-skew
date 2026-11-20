@@ -36,6 +36,16 @@ def test_exclude_validates_and_dedupes(tmp_path):
     assert holdings.excluded(f) == {"ABC"}
 
 
+def test_include_undoes_an_exclude_and_keeps_the_rest(tmp_path):
+    f = tmp_path / "e.txt"
+    f.write_text("# can't buy these\nABC\nXYZ\n")
+    assert holdings.include("abc", f) == {"XYZ"}
+    assert f.read_text() == "# can't buy these\nXYZ\n"
+    assert holdings.include("ABC", f) == {"XYZ"} and holdings.include("NOPE", tmp_path / "missing.txt") == set()
+    with pytest.raises(ValueError):
+        holdings.include("a;rm", f)
+
+
 def test_rows_cover_us_light_missing_etf_and_jse_price():
     lights = [{"symbol": "SCHD", "name": "Schwab", "light": "add", "label": "Good time to add", "why": "w", "price": 28.0, "ret_1m": -0.02},
               {"symbol": "QQQ", "name": "QQQ", "light": "none", "label": "No reading", "why": "x", "price": None, "ret_1m": None}]

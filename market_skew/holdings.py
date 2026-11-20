@@ -117,6 +117,22 @@ def exclude(symbol: str, path: Path = EXCLUDED) -> set[str]:
     return current | {symbol}
 
 
+def include(symbol: str, path: Path = EXCLUDED) -> set[str]:
+    """Undo exclude: drop the ticker's line, keep every other line (comments too), return the new set."""
+    symbol = symbol.strip().upper()
+    if not TICKER.fullmatch(symbol):
+        raise ValueError("Not a ticker.")
+    with SAVE_LOCK:
+        try:
+            lines = path.read_text().splitlines()
+        except OSError:
+            return set()
+        kept = [line for line in lines if line.strip().upper() != symbol]
+        if len(kept) != len(lines):
+            atomic.write_text(path, "".join(f"{line}\n" for line in kept))
+    return excluded(path)
+
+
 def rows(holdings: list[dict], lights: list[dict], quotes: dict) -> list[dict]:
     """One display row per holding. `lights` are picks.holdings_check rows for the US names; JSE (tfsa) holdings
     show their rand price only."""

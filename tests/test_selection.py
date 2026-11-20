@@ -69,7 +69,7 @@ def test_chip_says_when_claude_has_not_checked_and_chat_brief_carries_scores():
 
 def test_empty_picks_say_so_plainly():
     html = swing_view.section({"swing": []})
-    assert "No company is both attractive" in html and "goes to the funds" in html
+    assert "No stock picks today" in html and "goes into the funds" in html
 
 
 def test_chat_brief_describes_one_method_and_the_plan():
@@ -78,3 +78,9 @@ def test_chat_brief_describes_one_method_and_the_plan():
     text = chat.brief("picks", report)
     assert "AAA Acme" in text and "buy $50.00, stop $46.00, target $58.00" in text and "Your plan this month" in text
     assert "Conservative" not in text and "Adventurous" not in text and "Steady" not in text and "lens" not in text.lower()
+
+
+def test_hidden_picks_can_be_shown_again_after_a_reload():
+    html = swing_view.section({"swing": [], "swing_hidden": ["ACN", "<X>"]})
+    assert 'data-include="ACN"' in html and "Show ACN again" in html and "&lt;X&gt;" in html and "<X>" not in html
+    assert "data-include" not in swing_view.section({"swing": []})

@@ -40,6 +40,15 @@ def _exclude(data, app):
     return 200, {"excluded": symbol}
 
 
+def _include(data, app):
+    symbol = _ticker(data)
+    if not symbol:
+        return NOT_A_TICKER
+    with app.WATCH_LOCK:
+        holdings.include(symbol)
+    return 200, {"included": symbol}
+
+
 def _accept(data, app):
     import datetime as dt
     stamp = dt.datetime.now().isoformat(timespec="seconds")
@@ -100,7 +109,7 @@ def _ask(data, app):
         return 200, {"error": str(error)}
 
 
-ROUTES = {"/accept": _accept, "/run": _run, "/watch": _watch, "/exclude": _exclude, "/theme": _theme, "/settings": _settings, "/amounts": _amounts,
+ROUTES = {"/accept": _accept, "/run": _run, "/watch": _watch, "/exclude": _exclude, "/include": _include,"/theme": _theme, "/settings": _settings, "/amounts": _amounts,
           "/plan": _plan, "/ask": _ask}
 
 

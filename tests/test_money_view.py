@@ -80,7 +80,7 @@ def test_money_route_and_tab_exist():
     assert server.VIEW_PATHS["/money"] == "money"
     from market_skew.ui import views
     keys = [k for k, _, _ in views.TABS]
-    assert keys.index("money") == keys.index("picks") + 1
+    assert keys[-1] == "money"
 
 
 def test_etf_meter_shows_share_against_the_rule_of_thumb():

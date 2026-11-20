@@ -58,11 +58,37 @@
     star.closest("tr").dataset.watch = result.on ? "1" : "0";
   }));
 
+  // "Not on EasyEquities" hides the card and leaves an Undo in its place; Undo puts it back.
   document.querySelectorAll("[data-exclude]").forEach((btn) => btn.addEventListener("click", async () => {
+    const symbol = btn.dataset.exclude;
     btn.disabled = true;
-    const result = await post("/exclude", { symbol: btn.dataset.exclude });
+    const result = await post("/exclude", { symbol }).catch(() => ({ error: true }));
+    btn.disabled = false;
+    if (result.error) return;
+    const card = btn.closest(".pick");
+    const bar = document.createElement("div");
+    bar.className = "pick undo-bar";
+    bar.setAttribute("role", "status");
+    const text = document.createElement("span");
+    text.textContent = `${symbol} hidden: not on EasyEquities.`;
+    const undo = document.createElement("button");
+    undo.type = "button"; undo.className = "quiet small"; undo.textContent = "Undo";
+    undo.addEventListener("click", async () => {
+      undo.disabled = true;
+      const back = await post("/include", { symbol }).catch(() => ({ error: true }));
+      if (back.error) { undo.disabled = false; text.textContent = `Could not undo ${symbol}; try again.`; return; }
+      bar.remove(); card.hidden = false; btn.focus();
+    });
+    bar.append(text, undo);
+    card.hidden = true;
+    card.after(bar);
+    undo.focus();
+  }));
+  document.querySelectorAll("[data-include]").forEach((btn) => btn.addEventListener("click", async () => {
+    btn.disabled = true;
+    const result = await post("/include", { symbol: btn.dataset.include }).catch(() => ({ error: true }));
     if (result.error) { btn.disabled = false; return; }
-    btn.closest(".pick").remove();
+    location.reload();
   }));
 
   // Monthly amounts on Picks: the plan updates as you type and is remembered for this month.

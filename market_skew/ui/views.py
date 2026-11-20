@@ -1,10 +1,10 @@
 """Server-rendered pages. Every number on screen comes straight from the saved report; nothing is recalculated here."""
 from .. import gate, prediction, system
-from . import levels_view, plan_view, prediction_view, research_view, swing_view
+from . import levels_view, plain, plan_view, prediction_view, research_view, swing_view
 from .fmt import BUCKET_CLASS, count, cp_ratio, e, money, pct, tone, ticker_link
 
-TABS = [("picks", "/", "Picks"), ("money", "/money", "Money"), ("overview", "/market", "Market"), ("research", "/research", "Research"), ("stocks", "/stocks", "Stocks"), ("backtest", "/backtest", "Track record"),
-        ("how", "/how", "How it works")]
+TABS = [("picks", "/", "Picks"), ("overview", "/market", "Market"), ("research", "/research", "Research"), ("stocks", "/stocks", "Stocks"), ("backtest", "/backtest", "Track record"),
+        ("how", "/how", "How it works"), ("money", "/money", "Money")]
 BUCKETS = ["Contrarian Bid", "Chase", "Hedged Rally", "Fear"]
 
 
@@ -91,16 +91,20 @@ def overview(r: dict) -> str:
             f"Options expiry {e(r.get('expiry') or '–')}. Prices to the {e(r['date'])} close.")
     intraday = ('<p class="notice">Built while New York was still trading, so today\'s moves and volumes are partial. '
                 'The evening run replaces it.</p>' if r.get("intraday") else "")
-    return f"""<p class="meta">{meta}</p>{intraday}
+    return f"""{intraday}
+<section class="block"><div class="block-head"><h2>The market in plain English</h2><span class="hint">Prices to the {e(r['date'])} close.</span></div>
+{plain.answers(r)}</section>
+<section class="block"><div class="block-head"><h2>Who's on a winning streak?</h2><span class="hint">The last few weeks, one line per kind of business.</span></div>
+{plain.streaks(r.get('heatmap'), r.get('sectors') or [])}</section>
+<details class="explain nerd"><summary>Show the detailed numbers</summary>
+<p class="meta">{meta}</p>
 <section class="tiles">{tiles}</section>
-<section class="block"><div class="block-head"><h2>Today's read</h2><span class="hint">Written by fixed rules from the tables below, the same way every day.</span></div>
+<section class="block"><div class="block-head"><h2>Today's read, in market words</h2><span class="hint">Written by fixed rules from the tables below, the same way every day.</span></div>
 <ul class="read">{read}</ul></section>
-<section class="block"><div class="block-head"><h2>Where money is flowing</h2><span class="hint">Themes, dollar-volume weighted, no name over 25%. Click a heading to sort.</span></div>
+<section class="block"><div class="block-head"><h2>Where money is flowing</h2><span class="hint">"vs SPY" means compared with the S&amp;P 500. Click a heading to sort.</span></div>
 {group_table(r['themes'], 'Theme')}</section>
-<section class="block"><div class="block-head"><h2>Sectors</h2><span class="hint">The 11 GICS sectors built from the same names.</span></div>
-{group_table(r['sectors'], 'Sector', skew=True)}</section>
-<section class="block"><div class="block-head"><h2>Weekly relative return</h2><span class="hint">Each sector ETF's week minus SPY's. Green beat the market, red lagged it.</span></div>
-{heatmap(r['heatmap'])}</section>"""
+<section class="block"><div class="block-head"><h2>Sectors</h2><span class="hint">The 11 standard kinds of business.</span></div>
+{group_table(r['sectors'], 'Sector', skew=True)}</section></details>"""
 
 
 def _tile(t: dict) -> str:
@@ -140,19 +144,6 @@ def group_table(rows: list[dict], label: str, skew: bool = False) -> str:
             f'<td data-v="{r["breadth"]:.4f}">{pct(r["breadth"], False, 0)}</td>'
             + (f'<td data-v="{r["skew"]:.6f}">{pct(r["skew"], False)}</td>' if skew else "") + "</tr>")
     return f'<div class="table-wrap"><table class="data sortable"><thead>{head}</thead><tbody>{"".join(body)}</tbody></table></div>'
-
-
-def heatmap(h: dict) -> str:
-    if not h or not h.get("rows"):
-        return '<p class="hint">Not enough weeks yet.</p>'
-    weeks = h["weeks"]
-    head = "<tr><th></th>" + "".join(f"<th>{e(w)}{'<br><span class=muted>newest</span>' if i == len(weeks) - 1 else ''}</th>" for i, w in enumerate(weeks)) + "<th>1M rel</th></tr>"
-    rows = []
-    for name, values in sorted(h["rows"].items(), key=lambda kv: -h["rel_1m"].get(kv[0], 0)):
-        cells = "".join(f'<td class="heat" style="--a:{min(abs(v) / 0.06, 1):.2f}" data-tone="{tone(v)}">{pct(v)}</td>' for v in values)
-        m = h["rel_1m"].get(name, 0)
-        rows.append(f'<tr><th scope="row">{e(name)}</th>{cells}<td class="{tone(m)}"><b>{pct(m)}</b></td></tr>')
-    return f'<div class="table-wrap"><table class="data heatmap">{head}{"".join(rows)}</table></div>'
 
 
 def stocks(r: dict) -> str:
@@ -280,15 +271,18 @@ def picks_page(r: dict, amounts: dict, rate: float | None, amounts_set: bool = T
         mine = f'<div class="table-wrap"><table class="data holdings"><tbody>{mine}</tbody></table></div>'
     else:
         mine = '<p class="hint">Add what you own to config/holdings.json and each one gets a warning light here.</p>'
-    weather = e(r["read"][0].replace("The tape: ", "")) if r.get("read") else ""
     note = f'<p class="hint predict-missing">{e(prediction.MISSING_NOTE)}</p>' if r.get("forecaster_missing") else ""
     picks = swing_view.section(r)
     first, second = (picks, plan) if amounts_set else (plan, picks)
-    return f"""{note}
+    top = plain.monthly(r)
+    top = f'<section class="block"><div class="block-head"><h2>This month in one answer</h2></div><div class="answers one">{top}</div></section>' if top else ""
+    weather = "".join(x for x in (plain.market_up(r), plain.nervous(r)) if x)
+    weather = f'<div class="answers">{weather}</div><p class="hint"><a href="/market">More on the Market tab</a></p>' if weather else ""
+    return f"""{note}{top}
 {first}
 {second}
 <section class="block"><div class="block-head"><h2>Stocks you own</h2><span class="hint">Warning lights, not sell signals. Long-term holdings ride out bumps.</span></div>{mine}</section>
-<section class="block"><div class="block-head"><h2>Market today</h2></div><p class="prose">{weather}</p>
+<section class="block"><div class="block-head"><h2>Market today</h2></div>{weather}
 <p class="hint">These are rules applied to public data, not advice from a person who knows your situation. Nothing here is guaranteed.
 They tell you where to look, not what will happen.</p></section>"""
 
